@@ -25,29 +25,36 @@ class InventoryService
             ->value('stock');
     }
 
+    //purchase/refund
     public function receiveStock(
         Product $product,
         float $quantity,
         float $unitCost,
-        ?string $referenceType = null,
-        ?int $referenceId = null,
-        ?int $userId = null,
+        string $referenceType,
+        int $referenceId,
+        ?int $userId,
         ?string $notes = null
     ): InventoryTransaction {
-        if ($quantity <= 0) {
-            throw new RuntimeException('Quantity must be greater than zero.');
-        }
-
-        return InventoryTransaction::create([
-            'product_id' => $product->id,
-            'type' => 'purchase',
-            'quantity' => $quantity,
-            'unit_cost' => $unitCost,
-            'reference_type' => $referenceType,
-            'reference_id' => $referenceId,
-            'created_by' => $userId,
-            'notes' => $notes,
-        ]);
+        return DB::transaction(function () use (
+            $product,
+            $quantity,
+            $unitCost,
+            $referenceType,
+            $referenceId,
+            $userId,
+            $notes
+        ) {
+            return InventoryTransaction::create([
+                'product_id' => $product->id,
+                'type' => 'purchase',
+                'quantity' => $quantity,
+                'unit_cost' => $unitCost,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
+                'created_by' => $userId,
+                'notes' => $notes,
+            ]);
+        });
     }
 
     public function ensureSufficientStock(
@@ -62,5 +69,39 @@ class InventoryService
                     "Available: {$currentStock}, Requested: {$quantity}"
             );
         }
+    }
+
+    //sale/bad order
+    public function removeStock(
+        Product $product,
+        float $quantity,
+        float $unitCost,
+        string $referenceType,
+        int $referenceId,
+        ?int $userId,
+        ?string $notes = null
+    ): InventoryTransaction {
+        return DB::transaction(function () use (
+            $product,
+            $quantity,
+            $unitCost,
+            $referenceType,
+            $referenceId,
+            $userId,
+            $notes
+        ) {
+            $this->ensureSufficientStock($product, $quantity);
+
+            return InventoryTransaction::create([
+                'product_id' => $product->id,
+                'type' => 'sale',
+                'quantity' => $quantity,
+                'unit_cost' => $unitCost,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
+                'created_by' => $userId,
+                'notes' => $notes,
+            ]);
+        });
     }
 }
