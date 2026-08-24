@@ -104,4 +104,33 @@ class InventoryService
             ]);
         });
     }
+
+    public function restoreStock(
+        Product $product,
+        float $quantity,
+        string $referenceType,
+        int $referenceId,
+        ?int $userId,
+        ?string $notes = null
+    ): InventoryTransaction {
+        return DB::transaction(function () use (
+            $product,
+            $quantity,
+            $referenceType,
+            $referenceId,
+            $userId,
+            $notes
+        ) {
+            return InventoryTransaction::create([
+                'product_id' => $product->id,
+                'type' => 'adjustment',
+                'quantity' => $quantity,
+                'unit_cost' => null,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
+                'created_by' => $userId,
+                'notes' => $notes,
+            ]);
+        });
+    }
 }

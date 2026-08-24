@@ -40,6 +40,48 @@ class SaleController extends Controller
         ]);
     }
 
+    public function void(
+        Sale $sale,
+        InventoryService $inventoryService
+    ): JsonResponse {
+        if ($sale->status !== 'completed') {
+            return response()->json([
+                'message' => 'Only completed sales can be voided.',
+            ], 422);
+        }
+
+        DB::transaction(function () use (
+            $sale,
+            $inventoryService
+        ) {
+            $sale->load('items.product');
+
+            foreach ($sale->items as $item) {
+                $inventoryService->restoreStock(
+                    $item->product,
+                    (float) $item->quantity,
+                    'sale_void',
+                    $sale->id,
+                    Auth::id(),
+                    "Void sale {$sale->sale_number}"
+                );
+            }
+
+            $sale->update([
+                'status' => 'voided',
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Sale voided successfully.',
+            'data' => $sale->fresh()->load([
+                'customer',
+                'user',
+                'items.product',
+            ]),
+        ]);
+    }
+
     public function store(
         Request $request,
         InventoryService $inventoryService

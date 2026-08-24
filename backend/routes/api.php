@@ -25,6 +25,8 @@ Route::post('/sales', [SaleController::class, 'store']);
 Route::get('/sales', [SaleController::class, 'index']);
 Route::get('/sales/{sale}', [SaleController::class, 'show']);
 Route::post('/sales', [SaleController::class, 'store']);
+Route::post('/sales/{sale}/void', [SaleController::class, 'void']);
+
 
 Route::post(
     '/products/{product}/suppliers',
