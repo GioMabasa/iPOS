@@ -82,6 +82,49 @@ class SaleController extends Controller
         ]);
     }
 
+    public function refund(
+        Sale $sale,
+        InventoryService $inventoryService
+    ): JsonResponse {
+        if ($sale->status !== 'completed') {
+            return response()->json([
+                'message' => 'Only completed sales can be refunded.',
+            ], 422);
+        }
+
+        DB::transaction(function () use (
+            $sale,
+            $inventoryService
+        ) {
+            $sale->load('items.product');
+
+            foreach ($sale->items as $item) {
+                $inventoryService->refundStock(
+                    $item->product,
+                    (float) $item->quantity,
+                    (float) $item->unit_price,
+                    'sale_refund',
+                    $sale->id,
+                    Auth::id(),
+                    "Refund sale {$sale->sale_number}"
+                );
+            }
+
+            $sale->update([
+                'status' => 'refunded',
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Sale refunded successfully.',
+            'data' => $sale->fresh()->load([
+                'customer',
+                'user',
+                'items.product',
+            ]),
+        ]);
+    }
+
     public function store(
         Request $request,
         InventoryService $inventoryService

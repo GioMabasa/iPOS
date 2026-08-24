@@ -57,6 +57,62 @@ class InventoryService
         });
     }
 
+    public function refundStock(
+        Product $product,
+        float $quantity,
+        float $unitCost,
+        string $referenceType,
+        int $referenceId,
+        ?int $userId,
+        ?string $notes = null
+    ): InventoryTransaction {
+        return DB::transaction(function () use (
+            $product,
+            $quantity,
+            $unitCost,
+            $referenceType,
+            $referenceId,
+            $userId,
+            $notes
+        ) {
+            return InventoryTransaction::create([
+                'product_id' => $product->id,
+                'type' => 'refund',
+                'quantity' => $quantity,
+                'unit_cost' => $unitCost,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
+                'created_by' => $userId,
+                'notes' => $notes,
+            ]);
+        });
+    }
+
+    public function adjustStock(
+        Product $product,
+        float $quantity,
+        ?int $userId,
+        ?string $notes = null
+    ): InventoryTransaction {
+        return DB::transaction(function () use (
+            $product,
+            $quantity,
+            $userId,
+            $notes
+        ) {
+            return InventoryTransaction::create([
+                'product_id' => $product->id,
+                'type' => 'adjustment',
+                'quantity' => $quantity,
+                'unit_cost' => null,
+                'reference_type' => 'manual_adjustment',
+                'reference_id' => null,
+                'created_by' => $userId,
+                'notes' => $notes,
+            ]);
+        });
+    }
+
     public function ensureSufficientStock(
         Product $product,
         float $quantity
