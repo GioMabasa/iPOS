@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\BirSettingController;
 
 Route::post('/purchases', [
     PurchaseController::class,
@@ -48,3 +49,8 @@ Route::post(
     '/products/{product}/suppliers',
     [ProductController::class, 'syncSuppliers']
 );
+
+
+Route::get('/bir-settings', [BirSettingController::class, 'show']);
+Route::post('/bir-settings', [BirSettingController::class, 'store']);
+Route::put('/bir-settings/{birSetting}', [BirSettingController::class, 'update']);

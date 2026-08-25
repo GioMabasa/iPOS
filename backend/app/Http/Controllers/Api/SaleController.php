@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Services\InvoiceNumberService;
 
 class SaleController extends Controller
 {
@@ -127,7 +128,8 @@ class SaleController extends Controller
 
     public function store(
         Request $request,
-        InventoryService $inventoryService
+        InventoryService $inventoryService,
+        InvoiceNumberService $invoiceNumberService
     ): JsonResponse {
         $validated = $request->validate([
             'customer_id' => [
@@ -183,7 +185,8 @@ class SaleController extends Controller
 
         $sale = DB::transaction(function () use (
             $validated,
-            $inventoryService
+            $inventoryService,
+            $invoiceNumberService
         ) {
             $items = collect($validated['items']);
 
@@ -253,6 +256,7 @@ class SaleController extends Controller
             $userId = Auth::id() ?? 1;
             $sale = Sale::create([
                 'sale_number' => $this->generateSaleNumber(),
+                'invoice_number' => $invoiceNumberService->generate(),
                 'customer_id' => $validated['customer_id'] ?? null,
                 //'user_id' => Auth::id(),
                 'user_id' => $userId,
