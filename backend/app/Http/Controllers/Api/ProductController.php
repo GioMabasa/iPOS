@@ -61,12 +61,6 @@ class ProductController extends Controller
                 'max:50',
             ],
 
-            'cost_price' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
             'selling_price' => [
                 'required',
                 'numeric',
@@ -89,7 +83,10 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Product created successfully.',
-            'data' => $product->load('category'),
+            'data' => $product->load([
+                'category',
+                'suppliers',
+            ]),
         ], 201);
     }
 
@@ -145,13 +142,6 @@ class ProductController extends Controller
                 'required',
                 'string',
                 'max:50',
-            ],
-
-            'cost_price' => [
-                'sometimes',
-                'required',
-                'numeric',
-                'min:0',
             ],
 
             'selling_price' => [
@@ -234,7 +224,10 @@ class ProductController extends Controller
         $supplierIds = collect($validated['suppliers'])
             ->pluck('supplier_id');
 
-        if ($supplierIds->count() !== $supplierIds->unique()->count()) {
+        if (
+            $supplierIds->count() !==
+            $supplierIds->unique()->count()
+        ) {
             return response()->json([
                 'message' => 'Duplicate suppliers are not allowed.',
             ], 422);
@@ -254,17 +247,25 @@ class ProductController extends Controller
 
         foreach ($validated['suppliers'] as $supplier) {
             $syncData[$supplier['supplier_id']] = [
-                'supplier_sku' => $supplier['supplier_sku'] ?? null,
-                'cost_price' => $supplier['cost_price'],
-                'is_preferred' => $supplier['is_preferred'] ?? false,
+                'supplier_sku' =>
+                $supplier['supplier_sku'] ?? null,
+
+                'cost_price' =>
+                $supplier['cost_price'],
+
+                'is_preferred' =>
+                $supplier['is_preferred'] ?? false,
             ];
         }
 
         $product->suppliers()->sync($syncData);
 
         return response()->json([
-            'message' => 'Product suppliers updated successfully.',
-            'data' => $product->fresh()->load('suppliers'),
+            'message' =>
+            'Product suppliers updated successfully.',
+
+            'data' =>
+            $product->fresh()->load('suppliers'),
         ]);
     }
 }

@@ -16,14 +16,12 @@ class Product extends Model
         'barcode',
         'description',
         'unit',
-        'cost_price',
         'selling_price',
         'minimum_stock',
         'is_active',
     ];
 
     protected $casts = [
-        'cost_price' => 'decimal:2',
         'selling_price' => 'decimal:2',
         'minimum_stock' => 'decimal:3',
         'is_active' => 'boolean',
