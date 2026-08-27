@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\ReportController;
 
 
 /*
@@ -49,7 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:admin')->group(function () {
 
-        // BIR Settings
+        /*
+        |----------------------------------------------------------------------
+        | BIR Settings
+        |----------------------------------------------------------------------
+        */
+
         Route::get(
             '/bir-settings',
             [BirSettingController::class, 'show']
@@ -64,6 +70,51 @@ Route::middleware('auth:sanctum')->group(function () {
             '/bir-settings/{birSetting}',
             [BirSettingController::class, 'update']
         );
+
+        /* 
+        |-------------------------------------------------------------------------
+        | Daily Report 
+        |-------------------------------------------------------------------------- */
+        Route::get('/reports/sales/daily', [ReportController::class, 'dailySales']);
+
+        /*
+        |----------------------------------------------------------------------
+        | Sales Reports
+        |----------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/reports/sales/summary',
+            [ReportController::class, 'salesSummary']
+        );
+
+        Route::get(
+            '/reports/sales',
+            [ReportController::class, 'sales']
+        );
+
+        Route::get(
+            '/reports/sales/daily',
+            [ReportController::class, 'dailySales']
+        );
+
+        Route::get('/reports/products', [ReportController::class, 'productSales']);
+
+        Route::get(
+            '/reports/products/top-selling',
+            [ReportController::class, 'topSellingProducts']
+        );
+
+        Route::get(
+            '/reports/inventory/low-stock',
+            [ReportController::class, 'lowStock']
+        );
+
+
+        Route::get(
+            '/reports/inventory/transactions',
+            [ReportController::class, 'inventoryTransactions']
+        );
     });
 
 
@@ -75,13 +126,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:admin,manager')->group(function () {
 
-        // Suppliers
+        /*
+        |----------------------------------------------------------------------
+        | Suppliers
+        |----------------------------------------------------------------------
+        */
+
         Route::apiResource(
             'suppliers',
             SupplierController::class
         );
 
-        // Products
+
+        /*
+        |----------------------------------------------------------------------
+        | Products
+        |----------------------------------------------------------------------
+        */
+
         Route::apiResource(
             'products',
             ProductController::class
@@ -92,19 +154,37 @@ Route::middleware('auth:sanctum')->group(function () {
             [ProductController::class, 'syncSuppliers']
         );
 
-        // Categories
+
+        /*
+        |----------------------------------------------------------------------
+        | Categories
+        |----------------------------------------------------------------------
+        */
+
         Route::apiResource(
             'categories',
             CategoryController::class
         );
 
-        // Purchases
+
+        /*
+        |----------------------------------------------------------------------
+        | Purchases
+        |----------------------------------------------------------------------
+        */
+
         Route::post(
             '/purchases',
             [PurchaseController::class, 'store']
         );
 
-        // Inventory
+
+        /*
+        |----------------------------------------------------------------------
+        | Inventory
+        |----------------------------------------------------------------------
+        */
+
         Route::get(
             '/inventory',
             [InventoryController::class, 'index']
@@ -135,13 +215,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:admin,manager,cashier')->group(function () {
 
-        // Customers
+        /*
+        |----------------------------------------------------------------------
+        | Customers
+        |----------------------------------------------------------------------
+        */
+
         Route::apiResource(
             'customers',
             CustomerController::class
         );
 
-        // Sales
+
+        /*
+        |----------------------------------------------------------------------
+        | Sales
+        |----------------------------------------------------------------------
+        */
+
         Route::get(
             '/sales',
             [SaleController::class, 'index']
@@ -161,6 +252,17 @@ Route::middleware('auth:sanctum')->group(function () {
             '/sales/{sale}/invoice',
             [SaleController::class, 'invoice']
         );
+
+        Route::get('/reports/sales/void-refund', [ReportController::class, 'voidRefundHistory']);
+
+        Route::get('/reports/inventory/movement', [ReportController::class, 'inventoryMovement']);
+
+        Route::get(
+            '/reports/inventory/movement/summary',
+            [ReportController::class, 'inventoryMovementSummary']
+        );
+
+        Route::get('/reports/dashboard', [ReportController::class, 'dashboard']);
     });
 
 

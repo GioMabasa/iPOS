@@ -13,13 +13,12 @@ class InventoryCostService
     /**
      * Allocate inventory cost using FIFO.
      *
-     * Returns total COGS for the sale item.
+     * Returns the total cost of the sold quantity.
      */
     public function allocateFIFO(
         SaleItem $saleItem
     ): float {
         return DB::transaction(function () use ($saleItem) {
-
             $remainingQuantity = (float) $saleItem->quantity;
             $totalCost = 0.0;
 
@@ -29,33 +28,22 @@ class InventoryCostService
                 );
             }
 
-            /*
-             * Get purchase layers in FIFO order.
-             */
             $transactions = InventoryTransaction::query()
-                ->where(
-                    'product_id',
-                    $saleItem->product_id
-                )
-                ->where(
-                    'type',
-                    'purchase'
-                )
+                ->where('product_id', $saleItem->product_id)
+                ->where('type', 'purchase')
                 ->orderBy('created_at')
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get();
 
             foreach ($transactions as $transaction) {
-
                 if ($remainingQuantity <= 0) {
                     break;
                 }
 
-                $availableQuantity =
-                    $this->getAvailableQuantity(
-                        $transaction
-                    );
+                $availableQuantity = $this->getAvailableQuantity(
+                    $transaction
+                );
 
                 if ($availableQuantity <= 0) {
                     continue;
@@ -66,8 +54,7 @@ class InventoryCostService
                     $availableQuantity
                 );
 
-                $unitCost =
-                    (float) $transaction->unit_cost;
+                $unitCost = (float) $transaction->unit_cost;
 
                 $allocatedCost = round(
                     $allocatedQuantity * $unitCost,
@@ -75,29 +62,16 @@ class InventoryCostService
                 );
 
                 SaleItemCost::create([
-                    'sale_item_id' =>
-                    $saleItem->id,
-
-                    'inventory_transaction_id' =>
-                    $transaction->id,
-
-                    'quantity' =>
-                    $allocatedQuantity,
-
-                    'reversed_quantity' =>
-                    0,
-
-                    'unit_cost' =>
-                    $unitCost,
-
-                    'total_cost' =>
-                    $allocatedCost,
+                    'sale_item_id' => $saleItem->id,
+                    'inventory_transaction_id' => $transaction->id,
+                    'quantity' => $allocatedQuantity,
+                    'reversed_quantity' => 0,
+                    'unit_cost' => $unitCost,
+                    'total_cost' => $allocatedCost,
                 ]);
 
                 $totalCost += $allocatedCost;
-
-                $remainingQuantity -=
-                    $allocatedQuantity;
+                $remainingQuantity -= $allocatedQuantity;
             }
 
             if ($remainingQuantity > 0) {
@@ -109,96 +83,67 @@ class InventoryCostService
                 );
             }
 
-            return round(
-                $totalCost,
-                2
-            );
+            return round($totalCost, 2);
         });
     }
 
     /**
-     * Determine quantity still available
-     * from a purchase inventory layer.
+     * Determine available quantity from a purchase layer.
      */
     private function getAvailableQuantity(
         InventoryTransaction $transaction
     ): float {
-        $purchasedQuantity =
-            (float) $transaction->quantity;
+        $purchasedQuantity = (float) $transaction->quantity;
 
-        $allocatedQuantity =
-            (float) SaleItemCost::query()
-                ->where(
-                    'inventory_transaction_id',
-                    $transaction->id
-                )
-                ->selectRaw(
-                    'COALESCE(
-                        SUM(quantity - reversed_quantity),
-                        0
-                    )'
-                )
-                ->value(
-                    'allocated_quantity'
-                );
+        $allocatedQuantity = (float) SaleItemCost::query()
+            ->where(
+                'inventory_transaction_id',
+                $transaction->id
+            )
+            ->selectRaw(
+                'COALESCE(SUM(quantity - reversed_quantity), 0) AS allocated_quantity'
+            )
+            ->value('allocated_quantity');
 
         return max(
             0,
-            $purchasedQuantity
-                - $allocatedQuantity
+            $purchasedQuantity - $allocatedQuantity
         );
     }
 
     /**
      * Reverse FIFO cost allocation.
      *
-     * Used when a sale is voided or refunded.
-     *
-     * We reverse from the latest allocation first
-     * so the FIFO layers can be restored correctly.
+     * Used for VOID and REFUND.
      */
     public function reverseFIFO(
         SaleItem $saleItem
     ): float {
         return DB::transaction(function () use ($saleItem) {
-
-            $remainingQuantity =
-                (float) $saleItem->quantity;
-
+            $remainingQuantity = (float) $saleItem->quantity;
             $reversedCost = 0.0;
 
             if ($remainingQuantity <= 0) {
                 return 0.0;
             }
 
-            /*
-             * Reverse latest cost allocation first.
-             */
             $costs = SaleItemCost::query()
-                ->where(
-                    'sale_item_id',
-                    $saleItem->id
-                )
+                ->where('sale_item_id', $saleItem->id)
                 ->orderByDesc('id')
                 ->lockForUpdate()
                 ->get();
 
             foreach ($costs as $cost) {
-
                 if ($remainingQuantity <= 0) {
                     break;
                 }
 
-                $allocatedQuantity =
-                    (float) $cost->quantity;
-
-                $alreadyReversed =
-                    (float) $cost->reversed_quantity;
+                $allocatedQuantity = (float) $cost->quantity;
+                $alreadyReversed = (float) $cost->reversed_quantity;
 
                 $availableToReverse = max(
                     0,
-                    $allocatedQuantity
-                        - $alreadyReversed
+                    $allocatedQuantity - $alreadyReversed
                 );
 
                 if ($availableToReverse <= 0) {
@@ -216,29 +161,23 @@ class InventoryCostService
                 );
 
                 $reversedCost += round(
-                    $reverseQuantity
-                        * (float) $cost->unit_cost,
+                    $reverseQuantity * (float) $cost->unit_cost,
                     2
                 );
 
-                $remainingQuantity -=
-                    $reverseQuantity;
+                $remainingQuantity -= $reverseQuantity;
             }
 
             if ($remainingQuantity > 0) {
                 throw new RuntimeException(
-                    'Unable to reverse FIFO cost allocation '
-                        . 'for sale item ID '
+                    'Unable to reverse FIFO cost allocation for sale item ID '
                         . $saleItem->id
                         . '. Missing quantity: '
                         . $remainingQuantity
                 );
             }
 
-            return round(
-                $reversedCost,
-                2
-            );
+            return round($reversedCost, 2);
         });
     }
 }

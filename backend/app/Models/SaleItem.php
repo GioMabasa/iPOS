@@ -24,60 +24,66 @@ class SaleItem extends Model
         'total' => 'decimal:2',
     ];
 
-    /**
-     * Sale this item belongs to.
-     */
+    protected $appends = [
+        'total_cost',
+        'gross_profit',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
     public function sale(): BelongsTo
     {
-        return $this->belongsTo(
-            Sale::class
-        );
+        return $this->belongsTo(Sale::class);
     }
 
-    /**
-     * Product sold in this item.
-     */
     public function product(): BelongsTo
     {
-        return $this->belongsTo(
-            Product::class
-        );
+        return $this->belongsTo(Product::class);
     }
 
-    /**
-     * FIFO cost allocations for this sale item.
-     */
     public function costs(): HasMany
     {
-        return $this->hasMany(
-            SaleItemCost::class
-        );
+        return $this->hasMany(SaleItemCost::class);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | COGS
+    |--------------------------------------------------------------------------
+    */
+
     /**
-     * Get total COGS for this sale item.
+     * Total FIFO cost allocated to this sale item.
      *
-     * Only non-reversed cost is counted.
+     * We calculate this directly from sale_item_costs
+     * so it does not depend on the relationship being loaded.
      */
-    public function getCogsAttribute(): float
+    public function getTotalCostAttribute(): float
     {
         return round(
             (float) $this->costs()
-                ->selectRaw(
-                    'COALESCE(SUM(total_cost - (reversed_quantity * unit_cost)), 0)'
-                )
-                ->value(),
+                ->sum('total_cost'),
             2
         );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Gross Profit
+    |--------------------------------------------------------------------------
+    */
+
     /**
-     * Get gross profit for this sale item.
+     * Gross profit for this sale item.
      */
     public function getGrossProfitAttribute(): float
     {
         return round(
-            (float) $this->total - $this->cogs,
+            (float) $this->total - $this->total_cost,
             2
         );
     }
