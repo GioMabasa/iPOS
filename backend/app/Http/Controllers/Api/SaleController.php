@@ -5,13 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Services\InventoryCostService;
 use App\Services\InventoryService;
+use App\Services\InvoiceNumberService;
+use App\Services\InvoiceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use App\Services\InvoiceNumberService;
 
 class SaleController extends Controller
 {
@@ -21,6 +23,7 @@ class SaleController extends Controller
             'customer',
             'user',
             'items.product',
+            'items.costs.inventoryTransaction',
         ])
             ->latest('id')
             ->paginate(20);
@@ -37,101 +40,23 @@ class SaleController extends Controller
                 'customer',
                 'user',
                 'items.product',
+                'items.costs.inventoryTransaction',
             ]),
         ]);
     }
 
-    public function void(
-        Sale $sale,
-        InventoryService $inventoryService
-    ): JsonResponse {
-        if ($sale->status !== 'completed') {
-            return response()->json([
-                'message' => 'Only completed sales can be voided.',
-            ], 422);
-        }
-
-        DB::transaction(function () use (
-            $sale,
-            $inventoryService
-        ) {
-            $sale->load('items.product');
-
-            foreach ($sale->items as $item) {
-                $inventoryService->restoreStock(
-                    $item->product,
-                    (float) $item->quantity,
-                    'sale_void',
-                    $sale->id,
-                    Auth::id(),
-                    "Void sale {$sale->sale_number}"
-                );
-            }
-
-            $sale->update([
-                'status' => 'voided',
-            ]);
-        });
-
-        return response()->json([
-            'message' => 'Sale voided successfully.',
-            'data' => $sale->fresh()->load([
-                'customer',
-                'user',
-                'items.product',
-            ]),
-        ]);
-    }
-
-    public function refund(
-        Sale $sale,
-        InventoryService $inventoryService
-    ): JsonResponse {
-        if ($sale->status !== 'completed') {
-            return response()->json([
-                'message' => 'Only completed sales can be refunded.',
-            ], 422);
-        }
-
-        DB::transaction(function () use (
-            $sale,
-            $inventoryService
-        ) {
-            $sale->load('items.product');
-
-            foreach ($sale->items as $item) {
-                $inventoryService->refundStock(
-                    $item->product,
-                    (float) $item->quantity,
-                    (float) $item->unit_price,
-                    'sale_refund',
-                    $sale->id,
-                    Auth::id(),
-                    "Refund sale {$sale->sale_number}"
-                );
-            }
-
-            $sale->update([
-                'status' => 'refunded',
-            ]);
-        });
-
-        return response()->json([
-            'message' => 'Sale refunded successfully.',
-            'data' => $sale->fresh()->load([
-                'customer',
-                'user',
-                'items.product',
-            ]),
-        ]);
-    }
-
+    /**
+     * Complete a new sale.
+     */
     public function store(
         Request $request,
         InventoryService $inventoryService,
+        InventoryCostService $inventoryCostService,
         InvoiceNumberService $invoiceNumberService
     ): JsonResponse {
+
         $validated = $request->validate([
+
             'customer_id' => [
                 'nullable',
                 'exists:customers,id',
@@ -186,30 +111,34 @@ class SaleController extends Controller
         $sale = DB::transaction(function () use (
             $validated,
             $inventoryService,
+            $inventoryCostService,
             $invoiceNumberService
         ) {
-            $items = collect($validated['items']);
 
-            /*
-             * Load products once and prevent duplicate
-             * product IDs from causing inconsistent stock.
-             */
+            $items = collect(
+                $validated['items']
+            );
+
             $productIds = $items
                 ->pluck('product_id')
                 ->unique()
                 ->values();
 
-            $products = Product::whereIn('id', $productIds)
+            $products = Product::whereIn(
+                'id',
+                $productIds
+            )
                 ->get()
                 ->keyBy('id');
 
-            /*
-             * Calculate subtotal and validate stock.
-             */
-            $subtotal = 0;
+            $subtotal = 0.0;
 
             foreach ($items as $item) {
-                $product = $products->get($item['product_id']);
+
+                $product =
+                    $products->get(
+                        $item['product_id']
+                    );
 
                 if (!$product) {
                     throw ValidationException::withMessages([
@@ -219,20 +148,36 @@ class SaleController extends Controller
                     ]);
                 }
 
-                $quantity = (float) $item['quantity'];
+                $quantity =
+                    (float) $item['quantity'];
 
-                $inventoryService->ensureSufficientStock(
-                    $product,
+                $inventoryService
+                    ->ensureSufficientStock(
+                        $product,
+                        $quantity
+                    );
+
+                $subtotal +=
                     $quantity
-                );
-
-                $subtotal += $quantity * (float) $product->selling_price;
+                    * (float) $product->selling_price;
             }
 
-            $discount = (float) ($validated['discount'] ?? 0);
-            $tax = (float) ($validated['tax'] ?? 0);
+            $discount =
+                (float) (
+                    $validated['discount']
+                    ?? 0
+                );
 
-            $total = $subtotal - $discount + $tax;
+            $tax =
+                (float) (
+                    $validated['tax']
+                    ?? 0
+                );
+
+            $total =
+                $subtotal
+                - $discount
+                + $tax;
 
             if ($total < 0) {
                 throw ValidationException::withMessages([
@@ -242,7 +187,8 @@ class SaleController extends Controller
                 ]);
             }
 
-            $amountPaid = (float) $validated['amount_paid'];
+            $amountPaid =
+                (float) $validated['amount_paid'];
 
             if ($amountPaid < $total) {
                 throw ValidationException::withMessages([
@@ -252,67 +198,294 @@ class SaleController extends Controller
                 ]);
             }
 
-            $changeAmount = $amountPaid - $total;
-            $userId = Auth::id() ?? 1;
+            $changeAmount =
+                $amountPaid - $total;
+
+            $userId =
+                Auth::id() ?? 1;
+
             $sale = Sale::create([
-                'sale_number' => $this->generateSaleNumber(),
-                'invoice_number' => $invoiceNumberService->generate(),
-                'customer_id' => $validated['customer_id'] ?? null,
-                //'user_id' => Auth::id(),
-                'user_id' => $userId,
-                'sale_date' => $validated['sale_date'],
-                'subtotal' => $subtotal,
-                'discount' => $discount,
-                'tax' => $tax,
-                'total' => $total,
-                'amount_paid' => $amountPaid,
-                'change_amount' => $changeAmount,
-                'status' => 'completed',
-                'notes' => $validated['notes'] ?? null,
+
+                'sale_number' =>
+                $this->generateSaleNumber(),
+
+                'invoice_number' =>
+                $invoiceNumberService->generate(),
+
+                'customer_id' =>
+                $validated['customer_id'] ?? null,
+
+                'user_id' =>
+                $userId,
+
+                'sale_date' =>
+                $validated['sale_date'],
+
+                'subtotal' =>
+                $subtotal,
+
+                'discount' =>
+                $discount,
+
+                'tax' =>
+                $tax,
+
+                'total' =>
+                $total,
+
+                'amount_paid' =>
+                $amountPaid,
+
+                'change_amount' =>
+                $changeAmount,
+
+                'status' =>
+                'completed',
+
+                'notes' =>
+                $validated['notes'] ?? null,
             ]);
 
             foreach ($items as $item) {
-                $product = $products->get($item['product_id']);
 
-                $quantity = (float) $item['quantity'];
-                $unitPrice = (float) $product->selling_price;
-                $lineTotal = $quantity * $unitPrice;
+                $product =
+                    $products->get(
+                        $item['product_id']
+                    );
 
-                $sale->items()->create([
-                    'product_id' => $product->id,
-                    'quantity' => $quantity,
-                    'unit_price' => $unitPrice,
-                    'discount' => 0,
-                    'total' => $lineTotal,
-                ]);
+                $quantity =
+                    (float) $item['quantity'];
 
+                $unitPrice =
+                    (float) $product->selling_price;
+
+                $lineTotal =
+                    $quantity * $unitPrice;
+
+                $saleItem =
+                    $sale->items()->create([
+
+                        'product_id' =>
+                        $product->id,
+
+                        'quantity' =>
+                        $quantity,
+
+                        'unit_price' =>
+                        $unitPrice,
+
+                        'discount' =>
+                        0,
+
+                        'total' =>
+                        $lineTotal,
+                    ]);
+
+                /*
+                 * Remove physical inventory.
+                 */
                 $inventoryService->removeStock(
                     $product,
                     $quantity,
                     $unitPrice,
                     'sale',
                     $sale->id,
-                    Auth::id(),
+                    $userId,
                     "Sale {$sale->sale_number}"
                 );
+
+                /*
+                 * Allocate actual inventory cost
+                 * using FIFO.
+                 */
+                $inventoryCostService
+                    ->allocateFIFO(
+                        $saleItem
+                    );
             }
 
             return $sale;
         });
 
         return response()->json([
-            'message' => 'Sale completed successfully.',
-            'data' => $sale->load([
+            'message' =>
+            'Sale completed successfully.',
+
+            'data' =>
+            $sale->load([
                 'customer',
                 'user',
                 'items.product',
+                'items.costs.inventoryTransaction',
             ]),
         ], 201);
     }
 
+    /**
+     * Void completed sale.
+     */
+    public function void(
+        Sale $sale,
+        InventoryService $inventoryService,
+        InventoryCostService $inventoryCostService
+    ): JsonResponse {
+
+        if ($sale->status !== 'completed') {
+            return response()->json([
+                'message' =>
+                'Only completed sales can be voided.',
+            ], 422);
+        }
+
+        DB::transaction(function () use (
+            $sale,
+            $inventoryService,
+            $inventoryCostService
+        ) {
+
+            $sale->load([
+                'items.product',
+                'items.costs',
+            ]);
+
+            foreach ($sale->items as $item) {
+
+                /*
+                 * Restore inventory quantity.
+                 */
+                $inventoryService->restoreStock(
+                    $item->product,
+                    (float) $item->quantity,
+                    'sale_void',
+                    $sale->id,
+                    Auth::id(),
+                    "Void sale {$sale->sale_number}"
+                );
+
+                /*
+                 * Reverse FIFO COGS allocation.
+                 */
+                $inventoryCostService->reverseFIFO(
+                    $item
+                );
+            }
+
+            $sale->update([
+                'status' => 'voided',
+            ]);
+        });
+
+        return response()->json([
+            'message' =>
+            'Sale voided successfully.',
+
+            'data' =>
+            $sale->fresh()->load([
+                'customer',
+                'user',
+                'items.product',
+                'items.costs.inventoryTransaction',
+            ]),
+        ]);
+    }
+
+    /**
+     * Refund completed sale.
+     */
+    public function refund(
+        Sale $sale,
+        InventoryService $inventoryService,
+        InventoryCostService $inventoryCostService
+    ): JsonResponse {
+
+        if ($sale->status !== 'completed') {
+            return response()->json([
+                'message' =>
+                'Only completed sales can be refunded.',
+            ], 422);
+        }
+
+        DB::transaction(function () use (
+            $sale,
+            $inventoryService,
+            $inventoryCostService
+        ) {
+
+            $sale->load([
+                'items.product',
+                'items.costs',
+            ]);
+
+            foreach ($sale->items as $item) {
+
+                /*
+                 * Return item to inventory.
+                 *
+                 * IMPORTANT:
+                 * Refund quantity is added back as inventory.
+                 */
+                $inventoryService->refundStock(
+                    $item->product,
+                    (float) $item->quantity,
+                    (float) $item->unit_price,
+                    'sale_refund',
+                    $sale->id,
+                    Auth::id(),
+                    "Refund sale {$sale->sale_number}"
+                );
+
+                /*
+                 * Reverse original FIFO COGS.
+                 */
+                $inventoryCostService->reverseFIFO(
+                    $item
+                );
+            }
+
+            $sale->update([
+                'status' => 'refunded',
+            ]);
+        });
+
+        return response()->json([
+            'message' =>
+            'Sale refunded successfully.',
+
+            'data' =>
+            $sale->fresh()->load([
+                'customer',
+                'user',
+                'items.product',
+                'items.costs.inventoryTransaction',
+            ]),
+        ]);
+    }
+
+    /**
+     * Get invoice data.
+     */
+    public function invoice(
+        Sale $sale,
+        InvoiceService $invoiceService
+    ): JsonResponse {
+
+        return response()->json([
+            'message' =>
+            'Invoice data retrieved successfully.',
+
+            'data' =>
+            $invoiceService
+                ->getInvoiceData($sale),
+        ]);
+    }
+
+    /**
+     * Generate next sale number.
+     */
     private function generateSaleNumber(): string
     {
-        $nextId = (Sale::max('id') ?? 0) + 1;
+        $nextId =
+            (Sale::max('id') ?? 0) + 1;
 
         return 'SO-' . str_pad(
             $nextId,

@@ -2,14 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SaleItem extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'sale_id',
         'product_id',
@@ -26,13 +24,61 @@ class SaleItem extends Model
         'total' => 'decimal:2',
     ];
 
+    /**
+     * Sale this item belongs to.
+     */
     public function sale(): BelongsTo
     {
-        return $this->belongsTo(Sale::class);
+        return $this->belongsTo(
+            Sale::class
+        );
     }
 
+    /**
+     * Product sold in this item.
+     */
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(
+            Product::class
+        );
+    }
+
+    /**
+     * FIFO cost allocations for this sale item.
+     */
+    public function costs(): HasMany
+    {
+        return $this->hasMany(
+            SaleItemCost::class
+        );
+    }
+
+    /**
+     * Get total COGS for this sale item.
+     *
+     * Only non-reversed cost is counted.
+     */
+    public function getCogsAttribute(): float
+    {
+        return round(
+            (float) $this->costs()
+                ->selectRaw(
+                    'COALESCE(SUM(total_cost - (reversed_quantity * unit_cost)), 0)'
+                )
+                ->value(),
+            2
+        );
+    }
+
+    /**
+     * Get gross profit for this sale item.
+     */
+    public function getGrossProfitAttribute(): float
+    {
+        return round(
+            (float) $this->total - $this->cogs,
+            2
+        );
     }
 }
