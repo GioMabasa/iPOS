@@ -508,4 +508,44 @@ class ReportController extends Controller
             $data,
         ]);
     }
+
+
+    /**
+     * Sales trend report.
+     */
+    public function salesTrend(
+        Request $request,
+        SalesReportService $salesReportService
+    ): JsonResponse {
+
+        $range = $this->resolveDateRange(
+            $request
+        );
+
+        return response()->json([
+
+            'message' =>
+            'Sales trend retrieved successfully.',
+
+            'filters' => [
+
+                'period' =>
+                $request->input('period'),
+
+                'from' =>
+                $range['from'],
+
+                'to' =>
+                $range['to'],
+
+            ],
+
+            'data' =>
+            $salesReportService->salesTrend(
+                $range['from'],
+                $range['to']
+            ),
+
+        ]);
+    }
 }

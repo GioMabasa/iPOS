@@ -263,6 +263,12 @@ Route::middleware('auth:sanctum')->group(function () {
         );
 
         Route::get('/reports/dashboard', [ReportController::class, 'dashboard']);
+
+
+        Route::get(
+            '/reports/sales-trend',
+            [ReportController::class, 'salesTrend']
+        );
     });
 
 

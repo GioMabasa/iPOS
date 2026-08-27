@@ -524,4 +524,93 @@ class SalesReportService
             ];
         });
     }
+
+    /**
+     * Get daily sales trend for a date range.
+     *
+     * Only completed sales are included.
+     */
+    public function salesTrend(
+        string $from,
+        string $to
+    ): Collection {
+
+        $sales = $this->baseQuery($from, $to)
+            ->select([
+                'id',
+                'sale_date',
+                'total',
+            ])
+            ->orderBy('sale_date')
+            ->orderBy('id')
+            ->get();
+
+        $fromDate = \Carbon\Carbon::parse($from);
+        $toDate = \Carbon\Carbon::parse($to);
+
+        $trend = collect();
+
+        /*
+     * Create every date in the requested range first.
+     *
+     * This ensures dates with zero sales are also returned.
+     */
+        for (
+            $date = $fromDate->copy();
+            $date->lte($toDate);
+            $date->addDay()
+        ) {
+
+            $dateString = $date->toDateString();
+
+            $trend->put($dateString, [
+                'date' => $dateString,
+                'sales' => 0.0,
+                'transaction_count' => 0,
+            ]);
+        }
+
+
+        /*
+     * Add completed sales to their corresponding date.
+     */
+        foreach ($sales as $sale) {
+
+            $date = \Carbon\Carbon::parse(
+                $sale->sale_date
+            )->toDateString();
+
+            if (!$trend->has($date)) {
+                continue;
+            }
+
+            $data = $trend->get($date);
+
+            $data['sales'] +=
+                (float) $sale->total;
+
+            $data['transaction_count']++;
+
+            $trend->put(
+                $date,
+                $data
+            );
+        }
+
+
+        /*
+     * Format numeric values.
+     */
+        return $trend
+            ->map(function (array $data) {
+
+                $data['sales'] = round(
+                    $data['sales'],
+                    2
+                );
+
+                return $data;
+            })
+            ->values();
+    }
 }
