@@ -8,7 +8,6 @@ use App\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 
 class InventoryAdjustmentController extends Controller
 {
@@ -20,6 +19,11 @@ class InventoryAdjustmentController extends Controller
             'product_id' => [
                 'required',
                 'exists:products,id',
+            ],
+
+            'type' => [
+                'required',
+                'in:adjustment,bad_order',
             ],
 
             'quantity' => [
@@ -42,9 +46,25 @@ class InventoryAdjustmentController extends Controller
         $quantity = (float) $validated['quantity'];
 
         /*
-         * Prevent stock from becoming negative.
+         * Bad Order always removes stock.
          */
-        if ($quantity < 0) {
+        if ($validated['type'] === 'bad_order') {
+            $quantity = abs($quantity);
+
+            $inventoryService->ensureSufficientStock(
+                $product,
+                $quantity
+            );
+        }
+
+        /*
+         * Adjustment can increase or decrease stock.
+         * Negative quantity decreases stock.
+         */
+        if (
+            $validated['type'] === 'adjustment' &&
+            $quantity < 0
+        ) {
             $inventoryService->ensureSufficientStock(
                 $product,
                 abs($quantity)
@@ -57,14 +77,17 @@ class InventoryAdjustmentController extends Controller
             $product,
             $quantity,
             $userId,
-            $validated['notes'] ?? null
+            $validated['notes'] ?? null,
+            $validated['type']
         );
 
         return response()->json([
             'message' => 'Inventory adjusted successfully.',
             'data' => [
                 'transaction' => $transaction,
-                'current_stock' => $inventoryService->getCurrentStock($product),
+                'current_stock' => $inventoryService->getCurrentStock(
+                    $product
+                ),
             ],
         ], 201);
     }

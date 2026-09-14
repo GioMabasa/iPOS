@@ -46,6 +46,11 @@ class Sale extends Model
     |--------------------------------------------------------------------------
     */
 
+    public function actionRequests(): HasMany
+    {
+        return $this->hasMany(SaleActionRequest::class);
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

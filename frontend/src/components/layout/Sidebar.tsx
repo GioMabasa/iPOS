@@ -33,11 +33,11 @@ const menuItems: MenuItem[] = [
     path: "/suppliers",
     roles: ["admin", "manager"],
   },
-  {
-    label: "Customers",
-    path: "/customers",
-    roles: ["admin", "manager", "cashier"],
-  },
+  //   {
+  //     label: "Customers",
+  //     path: "/customers",
+  //     roles: ["admin", "manager", "cashier"],
+  //   },
   {
     label: "Purchases",
     path: "/purchases",
@@ -54,9 +54,14 @@ const menuItems: MenuItem[] = [
     roles: ["admin", "manager", "cashier"],
   },
   {
+    label: "Approval Requests",
+    path: "/approval-requests",
+    roles: ["admin", "manager"],
+  },
+  {
     label: "Reports",
     path: "/reports",
-    roles: ["admin"],
+    roles: ["admin", "manager"],
   },
   {
     label: "Settings",

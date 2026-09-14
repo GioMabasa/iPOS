@@ -2,8 +2,9 @@ import api from "./api";
 
 import type {
   Product,
-  ProductResponse,
+  ProductListResponse,
   SingleProductResponse,
+  GetProductsParams,
 } from "../types/product";
 
 import type {
@@ -16,11 +17,30 @@ import type {
 |--------------------------------------------------------------------------
 */
 
-export async function getProducts(): Promise<Product[]> {
-  const response =
-    await api.get<ProductResponse>("/products");
+export async function getProducts(
+  params: GetProductsParams = {},
+): Promise<ProductListResponse> {
+  const response = await api.get<ProductListResponse>(
+    "/products",
+    {
+      params: {
+        ...params,
 
-  return response.data.data;
+        ...(params.is_active !== ""
+          ? {
+              is_active:
+                params.is_active === true
+                  ? 1
+                  : params.is_active === false
+                    ? 0
+                    : undefined,
+            }
+          : {}),
+      },
+    },
+  );
+
+  return response.data;
 }
 
 /*
@@ -86,7 +106,7 @@ export async function updateProduct(
 
 /*
 |--------------------------------------------------------------------------
-| Delete Product
+| Delete / Deactivate Product
 |--------------------------------------------------------------------------
 */
 

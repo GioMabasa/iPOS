@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\POSProductController;
 
 
 /*
@@ -31,6 +33,27 @@ Route::post('/login', [AuthController::class, 'login']);
 */
 
 Route::middleware('auth:sanctum')->group(function () {
+
+
+    Route::post('/sales/{sale}/void-request', [SaleController::class, 'voidRequest']);
+    Route::post('/sales/{sale}/refund-request', [SaleController::class, 'refundRequest']);
+    Route::get('/sales/action-requests', [SaleController::class, 'actionRequests']);
+
+    Route::post(
+        '/sales/action-requests/{actionRequest}/approve',
+        [SaleController::class, 'approveActionRequest']
+    );
+
+    Route::post(
+        '/sales/action-requests/{actionRequest}/reject',
+        [SaleController::class, 'rejectActionRequest']
+    );
+
+    Route::get('/pos/products', [POSProductController::class, 'index']);
+
+
+
+
 
     /*
     |--------------------------------------------------------------------------
@@ -51,9 +74,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
 
         /*
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
         | BIR Settings
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
         */
 
         Route::get(
@@ -70,17 +93,139 @@ Route::middleware('auth:sanctum')->group(function () {
             '/bir-settings/{birSetting}',
             [BirSettingController::class, 'update']
         );
+    });
 
-        /* 
-        |-------------------------------------------------------------------------
-        | Daily Report 
-        |-------------------------------------------------------------------------- */
-        Route::get('/reports/sales/daily', [ReportController::class, 'dailySales']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin and Manager
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware('role:admin,manager')->group(function () {
 
         /*
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
+        | status
+        |--------------------------------------------------------------------------
+        */
+
+        Route::patch(
+            '/inventory/{product}/status',
+            [InventoryController::class, 'updateStatus']
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Users
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/users',
+            [UserController::class, 'index']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Suppliers
+        |--------------------------------------------------------------------------
+        */
+
+        Route::apiResource(
+            'suppliers',
+            SupplierController::class
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Products
+        |--------------------------------------------------------------------------
+        */
+
+        Route::apiResource(
+            'products',
+            ProductController::class
+        );
+
+        Route::post(
+            '/products/{product}/suppliers',
+            [ProductController::class, 'syncSuppliers']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Categories
+        |--------------------------------------------------------------------------
+        */
+
+        Route::apiResource(
+            'categories',
+            CategoryController::class
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Purchases
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/purchases',
+            [PurchaseController::class, 'index']
+        );
+
+        Route::get(
+            '/purchases/{purchase}',
+            [PurchaseController::class, 'show']
+        );
+
+        Route::post(
+            '/purchases',
+            [PurchaseController::class, 'store']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Inventory
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/inventory',
+            [InventoryController::class, 'index']
+        );
+
+        Route::get(
+            '/inventory/history',
+            [InventoryController::class, 'history']
+        );
+
+        Route::get(
+            '/inventory/{product}',
+            [InventoryController::class, 'show']
+        );
+
+        Route::get(
+            '/inventory/{product}/transactions',
+            [InventoryController::class, 'transactions']
+        );
+
+        Route::post(
+            '/inventory/adjust',
+            [InventoryAdjustmentController::class, 'store']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Sales Reports
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
         */
 
         Route::get(
@@ -98,7 +243,10 @@ Route::middleware('auth:sanctum')->group(function () {
             [ReportController::class, 'dailySales']
         );
 
-        Route::get('/reports/products', [ReportController::class, 'productSales']);
+        Route::get(
+            '/reports/products',
+            [ReportController::class, 'productSales']
+        );
 
         Route::get(
             '/reports/products/top-selling',
@@ -110,99 +258,9 @@ Route::middleware('auth:sanctum')->group(function () {
             [ReportController::class, 'lowStock']
         );
 
-
         Route::get(
             '/reports/inventory/transactions',
             [ReportController::class, 'inventoryTransactions']
-        );
-    });
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Admin and Manager
-    |--------------------------------------------------------------------------
-    */
-
-    Route::middleware('role:admin,manager')->group(function () {
-
-        /*
-        |----------------------------------------------------------------------
-        | Suppliers
-        |----------------------------------------------------------------------
-        */
-
-        Route::apiResource(
-            'suppliers',
-            SupplierController::class
-        );
-
-
-        /*
-        |----------------------------------------------------------------------
-        | Products
-        |----------------------------------------------------------------------
-        */
-
-        Route::apiResource(
-            'products',
-            ProductController::class
-        );
-
-        Route::post(
-            '/products/{product}/suppliers',
-            [ProductController::class, 'syncSuppliers']
-        );
-
-
-        /*
-        |----------------------------------------------------------------------
-        | Categories
-        |----------------------------------------------------------------------
-        */
-
-        Route::apiResource(
-            'categories',
-            CategoryController::class
-        );
-
-
-        /*
-        |----------------------------------------------------------------------
-        | Purchases
-        |----------------------------------------------------------------------
-        */
-
-        Route::post(
-            '/purchases',
-            [PurchaseController::class, 'store']
-        );
-
-
-        /*
-        |----------------------------------------------------------------------
-        | Inventory
-        |----------------------------------------------------------------------
-        */
-
-        Route::get(
-            '/inventory',
-            [InventoryController::class, 'index']
-        );
-
-        Route::get(
-            '/inventory/{product}',
-            [InventoryController::class, 'show']
-        );
-
-        Route::get(
-            '/inventory/{product}/transactions',
-            [InventoryController::class, 'transactions']
-        );
-
-        Route::post(
-            '/inventory/adjust',
-            [InventoryAdjustmentController::class, 'store']
         );
     });
 
@@ -216,9 +274,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin,manager,cashier')->group(function () {
 
         /*
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
+        | Inventory
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/inventory',
+            [InventoryController::class, 'index']
+        );
+
+        Route::get(
+            '/inventory/{product}',
+            [InventoryController::class, 'show']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Customers
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
         */
 
         Route::apiResource(
@@ -228,9 +302,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
         /*
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
         | Sales
-        |----------------------------------------------------------------------
+        |--------------------------------------------------------------------------
         */
 
         Route::get(

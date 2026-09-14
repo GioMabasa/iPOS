@@ -1,59 +1,87 @@
 import api from "./api";
 
 import type {
+  GetSuppliersParams,
+  GetSuppliersResponse,
   Supplier,
-  SupplierResponse,
-  SingleSupplierResponse,
+  SupplierRequest,
 } from "../types/supplier";
 
-export async function getSuppliers(): Promise<Supplier[]> {
-  const response =
-    await api.get<SupplierResponse>("/suppliers");
+/*
+|--------------------------------------------------------------------------
+| Get Suppliers
+|--------------------------------------------------------------------------
+|
+| Supports:
+| - Pagination
+| - Server-side search
+| - All / Active / Inactive filter
+|
+*/
 
-  return response.data.data;
+export async function getSuppliers(
+  params: GetSuppliersParams = {},
+): Promise<GetSuppliersResponse> {
+  const response = await api.get<GetSuppliersResponse>("/suppliers", {
+    params: {
+      page: params.page ?? 1,
+      per_page: params.per_page ?? 20,
+
+      ...(params.search?.trim()
+        ? {
+            search: params.search.trim(),
+          }
+        : {}),
+
+      ...(params.status && params.status !== "all"
+        ? {
+            status: params.status,
+          }
+        : {}),
+    },
+  });
+
+  return response.data;
 }
 
-export async function getSupplier(
-  id: number,
-): Promise<Supplier> {
-  const response =
-    await api.get<SingleSupplierResponse>(
-      `/suppliers/${id}`,
-    );
-
-  return response.data.data;
-}
+/*
+|--------------------------------------------------------------------------
+| Create Supplier
+|--------------------------------------------------------------------------
+*/
 
 export async function createSupplier(
-  supplier: Omit<
-    Supplier,
-    "id" | "created_at" | "updated_at"
-  >,
+  data: SupplierRequest,
 ): Promise<Supplier> {
-  const response =
-    await api.post<SingleSupplierResponse>(
-      "/suppliers",
-      supplier,
-    );
+  const response = await api.post<{ data: Supplier }>("/suppliers", data);
 
   return response.data.data;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Update Supplier
+|--------------------------------------------------------------------------
+*/
 
 export async function updateSupplier(
   id: number,
-  supplier: Partial<Supplier>,
+  data: SupplierRequest,
 ): Promise<Supplier> {
-  const response =
-    await api.put<SingleSupplierResponse>(
-      `/suppliers/${id}`,
-      supplier,
-    );
+  const response = await api.put<{ data: Supplier }>(
+    `/suppliers/${id}`,
+    data,
+  );
 
   return response.data.data;
 }
 
-export async function deleteSupplier(
-  id: number,
-): Promise<void> {
+/*
+|--------------------------------------------------------------------------
+| Delete Supplier
+|--------------------------------------------------------------------------
+*/
+
+export async function deleteSupplier(id: number): Promise<void> {
   await api.delete(`/suppliers/${id}`);
 }

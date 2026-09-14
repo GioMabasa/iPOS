@@ -41,9 +41,9 @@ export default function ProductSuppliers({ product }: ProductSuppliersProps) {
         setLoading(true);
         setError(null);
 
-        const data = await getSuppliers();
+        const response = await getSuppliers();
 
-        setSuppliers(data.filter((supplier) => supplier.is_active));
+        setSuppliers(response.data.filter((supplier) => supplier.is_active));
       } catch (err) {
         console.error("Load suppliers error:", err);
 

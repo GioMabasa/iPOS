@@ -20,3 +20,7 @@ body {
     "Segoe UI",
     sans-serif;
 }
+
+.low-stock-products-container {
+  max-height: 500px;
+}

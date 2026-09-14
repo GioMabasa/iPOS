@@ -71,9 +71,9 @@ export default function ProductForm({
         setCategoriesLoading(true);
         setError(null);
 
-        const data = await getCategories();
+        const response = await getCategories();
 
-        setCategories(data);
+        setCategories(response.data);
       } catch (err) {
         console.error("Load categories error:", err);
 
@@ -476,6 +476,7 @@ export default function ProductForm({
               step="0.001"
               min="0"
               value={minimumStock}
+              onFocus={(event) => event.currentTarget.select()}
               onChange={(e) => setMinimumStock(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               placeholder="0"

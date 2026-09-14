@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Sale;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class SalesReportService
@@ -11,13 +12,18 @@ class SalesReportService
     /**
      * Get sales summary for a date range.
      *
-     * Only completed sales are included.
+     * Only completed sales are included by default.
      */
     public function summary(
         ?string $from = null,
-        ?string $to = null
+        ?string $to = null,
+        array $filters = []
     ): array {
-        $sales = $this->baseQuery($from, $to)
+        $sales = $this->baseQuery(
+            $from,
+            $to,
+            $filters
+        )
             ->with([
                 'items.costs',
             ])
@@ -27,10 +33,20 @@ class SalesReportService
         $totalSales = 0.0;
         $totalCOGS = 0.0;
 
-        foreach ($sales as $sale) {
-            $totalSales += (float) $sale->total;
+        $productId = $filters['product_id'] ?? null;
 
+        foreach ($sales as $sale) {
             foreach ($sale->items as $item) {
+
+                if (
+                    $productId !== null
+                    && (int) $item->product_id !== (int) $productId
+                ) {
+                    continue;
+                }
+
+                $totalSales += (float) $item->total;
+
                 $totalCOGS += $this->getItemCOGS(
                     $item
                 );
@@ -65,13 +81,18 @@ class SalesReportService
     /**
      * Get detailed sales report.
      *
-     * Only completed sales are included.
+     * Only completed sales are included by default.
      */
     public function sales(
         ?string $from = null,
-        ?string $to = null
+        ?string $to = null,
+        array $filters = []
     ): Collection {
-        return $this->baseQuery($from, $to)
+        return $this->baseQuery(
+            $from,
+            $to,
+            $filters
+        )
             ->with([
                 'customer',
                 'user',
@@ -84,11 +105,38 @@ class SalesReportService
 
 
     /**
+     * Get paginated detailed sales report.
+     *
+     * Only completed sales are included by default.
+     */
+    public function salesPaginated(
+        ?string $from = null,
+        ?string $to = null,
+        array $filters = [],
+        int $perPage = 20
+    ): LengthAwarePaginator {
+        return $this->baseQuery(
+            $from,
+            $to,
+            $filters
+        )
+            ->with([
+                'customer',
+                'user',
+                'items.product',
+                'items.costs.inventoryTransaction',
+            ])
+            ->latest('id')
+            ->paginate($perPage);
+    }
+
+
+    /**
      * Get today's sales report.
      */
     public function dailySales(): array
     {
-        $date = now()->toDateString();
+        $date = \Carbon\Carbon::now('Asia/Manila')->toDateString();
 
         return [
             'date' => $date,
@@ -242,17 +290,37 @@ class SalesReportService
     /**
      * Base sales query.
      *
-     * Only completed sales are included.
+     * Only completed sales are included by default.
+     *
+     * Optional filters:
+     * - user_id
+     * - product_id
+     * - status
+     * - sale_number
+     * - invoice_number
      */
     private function baseQuery(
         ?string $from = null,
-        ?string $to = null
+        ?string $to = null,
+        array $filters = []
     ): Builder {
-        $query = Sale::query()
-            ->where(
+        $query = Sale::query();
+
+        /*
+         * Keep the existing behavior:
+         * completed sales are returned by default.
+         *
+         * If status is explicitly "all", all sale statuses
+         * are included.
+         */
+        $status = $filters['status'] ?? 'completed';
+
+        if ($status !== 'all') {
+            $query->where(
                 'status',
-                'completed'
+                $status
             );
+        }
 
         if ($from !== null) {
             $query->whereDate(
@@ -267,6 +335,67 @@ class SalesReportService
                 'sale_date',
                 '<=',
                 $to
+            );
+        }
+
+        /*
+         * Sold By filter.
+         */
+        if (
+            isset($filters['user_id'])
+            && $filters['user_id'] !== null
+            && $filters['user_id'] !== ''
+        ) {
+            $query->where(
+                'user_id',
+                $filters['user_id']
+            );
+        }
+
+        /*
+         * Product filter.
+         */
+        if (
+            isset($filters['product_id'])
+            && $filters['product_id'] !== null
+            && $filters['product_id'] !== ''
+        ) {
+            $query->whereHas(
+                'items',
+                function ($itemQuery) use ($filters) {
+                    $itemQuery->where(
+                        'product_id',
+                        $filters['product_id']
+                    );
+                }
+            );
+        }
+
+        /*
+         * Sale Number filter.
+         */
+        if (
+            isset($filters['sale_number'])
+            && $filters['sale_number'] !== ''
+        ) {
+            $query->where(
+                'sale_number',
+                'like',
+                '%' . $filters['sale_number'] . '%'
+            );
+        }
+
+        /*
+         * Invoice Number filter.
+         */
+        if (
+            isset($filters['invoice_number'])
+            && $filters['invoice_number'] !== ''
+        ) {
+            $query->where(
+                'invoice_number',
+                'like',
+                '%' . $filters['invoice_number'] . '%'
             );
         }
 
@@ -525,6 +654,7 @@ class SalesReportService
         });
     }
 
+
     /**
      * Get daily sales trend for a date range.
      *
@@ -572,8 +702,8 @@ class SalesReportService
 
 
         /*
-     * Add completed sales to their corresponding date.
-     */
+         * Add completed sales to their corresponding date.
+         */
         foreach ($sales as $sale) {
 
             $date = \Carbon\Carbon::parse(
@@ -599,8 +729,8 @@ class SalesReportService
 
 
         /*
-     * Format numeric values.
-     */
+         * Format numeric values.
+         */
         return $trend
             ->map(function (array $data) {
 

@@ -5,6 +5,7 @@ import type {
   DashboardResponse,
   SalesTrendResponse,
 } from "../types/report";
+import type { Sale } from "../types/sale";
 
 
 /*
@@ -22,11 +23,24 @@ export interface ReportParams {
 
 /*
 |--------------------------------------------------------------------------
-| API Response Types
+| Sales Report Parameters
 |--------------------------------------------------------------------------
-|
-| These are intentionally lightweight for reports where the complete
-| response interface is not required by the dashboard yet.
+*/
+
+export interface SalesReportParams extends ReportParams {
+  user_id?: number;
+  product_id?: number;
+  status?: "all" | "completed" | "voided" | "refunded";
+  sale_number?: string;
+  invoice_number?: string;
+  page?: number;
+  per_page?: number;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| API Response Types
 |--------------------------------------------------------------------------
 */
 
@@ -38,12 +52,88 @@ export interface ReportResponse<T = unknown> {
 
 /*
 |--------------------------------------------------------------------------
+| Sales Summary Response
+|--------------------------------------------------------------------------
+*/
+
+export interface SalesSummary {
+  transaction_count: number;
+  total_sales: number;
+  total_cogs: number;
+  gross_profit: number;
+  gross_margin: number;
+}
+
+export interface SalesSummaryResponse {
+  message: string;
+  filters?: {
+    period?: string;
+    from?: string;
+    to?: string;
+    user_id?: number | null;
+    product_id?: number | null;
+    status?: string;
+    sale_number?: string | null;
+    invoice_number?: string | null;
+  };
+  data: SalesSummary;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Sales Report Pagination
+|--------------------------------------------------------------------------
+*/
+
+export interface SalesReportPagination {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Paginated Sales Report Response
+|--------------------------------------------------------------------------
+*/
+
+export interface SalesReportPaginatedResponse<T = unknown> {
+  message: string;
+  filters?: {
+    period?: string;
+    from?: string;
+    to?: string;
+    user_id?: number | null;
+    product_id?: number | null;
+    status?: string;
+    sale_number?: string | null;
+    invoice_number?: string | null;
+  };
+  data: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+    data: T[];
+  };
+}
+
+
+/*
+|--------------------------------------------------------------------------
 | Build Query Parameters
 |--------------------------------------------------------------------------
 */
 
 function buildParams(
-  params: ReportParams,
+  params: ReportParams | SalesReportParams,
 ): Record<string, string> {
 
   const query: Record<string, string> = {
@@ -64,6 +154,41 @@ function buildParams(
     params.to
   ) {
     query.to = params.to;
+  }
+
+
+  if ("user_id" in params && params.user_id !== undefined) {
+    query.user_id = String(params.user_id);
+  }
+
+
+  if ("product_id" in params && params.product_id !== undefined) {
+    query.product_id = String(params.product_id);
+  }
+
+
+  if ("status" in params && params.status) {
+    query.status = params.status;
+  }
+
+
+  if ("sale_number" in params && params.sale_number) {
+    query.sale_number = params.sale_number;
+  }
+
+
+  if ("invoice_number" in params && params.invoice_number) {
+    query.invoice_number = params.invoice_number;
+  }
+
+
+  if ("page" in params && params.page !== undefined) {
+    query.page = String(params.page);
+  }
+
+
+  if ("per_page" in params && params.per_page !== undefined) {
+    query.per_page = String(params.per_page);
   }
 
 
@@ -101,12 +226,12 @@ export async function getDashboardReport(
 */
 
 export async function getSalesSummary(
-  params: ReportParams,
-): Promise<ReportResponse> {
+  params: SalesReportParams,
+): Promise<SalesSummaryResponse> {
 
   const response =
-    await api.get<ReportResponse>(
-      "/reports/sales-summary",
+    await api.get<SalesSummaryResponse>(
+      "/reports/sales/summary",
       {
         params: buildParams(params),
       },
@@ -124,17 +249,15 @@ export async function getSalesSummary(
 */
 
 export async function getSalesReport(
-  params: ReportParams,
-): Promise<ReportResponse> {
-
+  params: SalesReportParams,
+): Promise<SalesReportPaginatedResponse<Sale>> {
   const response =
-    await api.get<ReportResponse>(
+    await api.get<SalesReportPaginatedResponse<Sale>>(
       "/reports/sales",
       {
         params: buildParams(params),
       },
     );
-
 
   return response.data;
 }

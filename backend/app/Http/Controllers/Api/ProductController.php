@@ -9,15 +9,135 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'search' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'category_id' => [
+                'nullable',
+                'integer',
+                'exists:categories,id',
+            ],
+
+            'is_active' => [
+                'nullable',
+                'boolean',
+            ],
+
+            'page' => [
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+
+            'per_page' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100',
+            ],
+        ]);
+
         $products = Product::query()
             ->with([
                 'category',
                 'suppliers',
             ])
+
+            /*
+        |--------------------------------------------------------------------------
+        | Search
+        |--------------------------------------------------------------------------
+        */
+
+            ->when(
+                !empty($validated['search']),
+                function ($query) use ($validated) {
+
+                    $search = $validated['search'];
+
+                    $query->where(function ($query) use ($search) {
+
+                        $query
+                            ->where(
+                                'name',
+                                'like',
+                                "%{$search}%"
+                            )
+
+                            ->orWhere(
+                                'sku',
+                                'like',
+                                "%{$search}%"
+                            )
+
+                            ->orWhere(
+                                'barcode',
+                                'like',
+                                "%{$search}%"
+                            );
+                    });
+                }
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | Category Filter
+        |--------------------------------------------------------------------------
+        */
+
+            ->when(
+                isset($validated['category_id']),
+                function ($query) use ($validated) {
+
+                    $query->where(
+                        'category_id',
+                        $validated['category_id']
+                    );
+                }
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | Active / Inactive Filter
+        |--------------------------------------------------------------------------
+        */
+
+            ->when(
+                isset($validated['is_active']),
+                function ($query) use ($validated) {
+
+                    $query->where(
+                        'is_active',
+                        $validated['is_active']
+                    );
+                }
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | Latest Products First
+        |--------------------------------------------------------------------------
+        */
+
             ->latest()
-            ->paginate(20);
+
+            /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        */
+
+            ->paginate(
+                $validated['per_page'] ?? 20
+            )
+
+            ->withQueryString();
 
         return response()->json($products);
     }

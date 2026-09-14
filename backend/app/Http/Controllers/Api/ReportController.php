@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use App\Services\InventoryReportService;
 use App\Services\DashboardReportService;
+use Carbon\Carbon;
 
 class ReportController extends Controller
 {
@@ -38,7 +39,7 @@ class ReportController extends Controller
 
             case 'today':
 
-                $date = now();
+                $date = Carbon::now('Asia/Manila');
 
                 return [
                     'from' => $date->toDateString(),
@@ -54,7 +55,7 @@ class ReportController extends Controller
 
             case 'yesterday':
 
-                $date = now()->subDay();
+                $date = Carbon::now('Asia/Manila')->subDay();
 
                 return [
                     'from' => $date->toDateString(),
@@ -147,6 +148,59 @@ class ReportController extends Controller
     }
 
 
+    /**
+     * Validate sales report filters.
+     */
+    private function validateSalesFilters(
+        Request $request
+    ): array {
+
+        return $request->validate([
+            'user_id' => [
+                'nullable',
+                'integer',
+                'exists:users,id',
+            ],
+
+            'product_id' => [
+                'nullable',
+                'integer',
+                'exists:products,id',
+            ],
+
+            'status' => [
+                'nullable',
+                'in:all,completed,voided,refunded',
+            ],
+
+            'sale_number' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'invoice_number' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'page' => [
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+
+            'per_page' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100',
+            ],
+        ]);
+    }
+
+
     /*
     |--------------------------------------------------------------------------
     | Daily Sales
@@ -190,6 +244,10 @@ class ReportController extends Controller
             $request
         );
 
+        $filters = $this->validateSalesFilters(
+            $request
+        );
+
         return response()->json([
             'message' =>
             'Sales report retrieved successfully.',
@@ -203,12 +261,29 @@ class ReportController extends Controller
 
                 'to' =>
                 $range['to'],
+
+                'user_id' =>
+                $filters['user_id'] ?? null,
+
+                'product_id' =>
+                $filters['product_id'] ?? null,
+
+                'status' =>
+                $filters['status'] ?? 'completed',
+
+                'sale_number' =>
+                $filters['sale_number'] ?? null,
+
+                'invoice_number' =>
+                $filters['invoice_number'] ?? null,
             ],
 
             'data' =>
-            $salesReportService->sales(
+            $salesReportService->salesPaginated(
                 $range['from'],
-                $range['to']
+                $range['to'],
+                $filters,
+                $request->input('per_page', 20)
             ),
         ]);
     }
@@ -232,6 +307,10 @@ class ReportController extends Controller
             $request
         );
 
+        $filters = $this->validateSalesFilters(
+            $request
+        );
+
         return response()->json([
             'message' =>
             'Sales summary retrieved successfully.',
@@ -245,12 +324,28 @@ class ReportController extends Controller
 
                 'to' =>
                 $range['to'],
+
+                'user_id' =>
+                $filters['user_id'] ?? null,
+
+                'product_id' =>
+                $filters['product_id'] ?? null,
+
+                'status' =>
+                $filters['status'] ?? 'completed',
+
+                'sale_number' =>
+                $filters['sale_number'] ?? null,
+
+                'invoice_number' =>
+                $filters['invoice_number'] ?? null,
             ],
 
             'data' =>
             $salesReportService->summary(
                 $range['from'],
-                $range['to']
+                $range['to'],
+                $filters
             ),
         ]);
     }

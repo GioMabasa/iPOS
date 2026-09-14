@@ -11,9 +11,57 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-
 class PurchaseController extends Controller
 {
+    /**
+     * Display a paginated list of purchases.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $perPage = min(
+            max((int) $request->input('per_page', 20), 1),
+            100
+        );
+
+        $purchases = Purchase::query()
+            ->with('supplier')
+            ->latest()
+            ->paginate($perPage);
+
+        return response()->json([
+            'message' => 'Purchases retrieved successfully.',
+            'data' => $purchases->items(),
+            'pagination' => [
+                'current_page' => $purchases->currentPage(),
+                'last_page' => $purchases->lastPage(),
+                'per_page' => $purchases->perPage(),
+                'total' => $purchases->total(),
+                'from' => $purchases->firstItem(),
+                'to' => $purchases->lastItem(),
+            ],
+        ]);
+    }
+
+    /**
+     * Display the specified purchase.
+     */
+    public function show(Purchase $purchase): JsonResponse
+    {
+        $purchase->load([
+            'supplier',
+            'items.product',
+            'receivedBy',
+        ]);
+
+        return response()->json([
+            'message' => 'Purchase retrieved successfully.',
+            'data' => $purchase,
+        ]);
+    }
+
+    /**
+     * Store a newly created purchase and receive inventory.
+     */
     public function store(
         Request $request,
         InventoryService $inventoryService
@@ -119,6 +167,18 @@ class PurchaseController extends Controller
                     'total' => $lineTotal,
                 ]);
 
+                /*
+                 * Update the current supplier cost for this product.
+                 *
+                 * purchase_items.unit_cost remains the historical
+                 * purchase cost for this specific purchase.
+                 */
+                $product->suppliers()->syncWithoutDetaching([
+                    $validated['supplier_id'] => [
+                        'cost_price' => $item['unit_cost'],
+                    ],
+                ]);
+
                 $inventoryService->receiveStock(
                     $product,
                     $item['quantity'],
@@ -142,6 +202,9 @@ class PurchaseController extends Controller
         ], 201);
     }
 
+    /**
+     * Generate purchase number.
+     */
     private function generatePurchaseNumber(): string
     {
         $nextId = (Purchase::max('id') ?? 0) + 1;

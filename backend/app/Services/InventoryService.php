@@ -101,26 +101,54 @@ class InventoryService
     }
 
     /**
-     * Manual inventory adjustment.
+     * Manual inventory adjustment or bad order.
      */
     public function adjustStock(
         Product $product,
         float $quantity,
         ?int $userId,
-        ?string $notes = null
+        ?string $notes = null,
+        string $type = 'adjustment'
     ): InventoryTransaction {
         return DB::transaction(function () use (
             $product,
             $quantity,
             $userId,
-            $notes
+            $notes,
+            $type
         ) {
+            if (!in_array($type, ['adjustment', 'bad_order'])) {
+                throw new RuntimeException(
+                    'Invalid inventory adjustment type.'
+                );
+            }
+
+            if ($quantity == 0) {
+                throw new RuntimeException(
+                    'Inventory adjustment quantity cannot be zero.'
+                );
+            }
+
+            /*
+         * Bad Order always removes stock.
+         */
+            if ($type === 'bad_order') {
+                $quantity = abs($quantity);
+
+                $this->ensureSufficientStock(
+                    $product,
+                    $quantity
+                );
+            }
+
             return InventoryTransaction::create([
                 'product_id' => $product->id,
-                'type' => 'adjustment',
+                'type' => $type,
                 'quantity' => $quantity,
                 'unit_cost' => null,
-                'reference_type' => 'manual_adjustment',
+                'reference_type' => $type === 'bad_order'
+                    ? 'bad_order'
+                    : 'manual_adjustment',
                 'reference_id' => null,
                 'created_by' => $userId,
                 'notes' => $notes,

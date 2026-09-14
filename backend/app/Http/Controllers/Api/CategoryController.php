@@ -13,13 +13,64 @@ class CategoryController extends Controller
     /**
      * Display a listing of categories.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $categories = Category::latest()->get();
+        $validated = $request->validate([
+            'search' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'per_page' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100',
+            ],
+        ]);
+
+        $perPage = min(
+            max((int) ($validated['per_page'] ?? 20), 1),
+            100
+        );
+
+        $categories = Category::query()
+            ->when(
+                !empty($validated['search']),
+                function ($query) use ($validated) {
+                    $search = $validated['search'];
+
+                    $query->where(function ($query) use ($search) {
+                        $query
+                            ->where(
+                                'name',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'description',
+                                'like',
+                                "%{$search}%"
+                            );
+                    });
+                }
+            )
+            ->latest()
+            ->paginate($perPage)
+            ->withQueryString();
 
         return response()->json([
             'message' => 'Categories retrieved successfully.',
-            'data' => $categories,
+            'data' => $categories->items(),
+            'pagination' => [
+                'current_page' => $categories->currentPage(),
+                'last_page' => $categories->lastPage(),
+                'per_page' => $categories->perPage(),
+                'total' => $categories->total(),
+                'from' => $categories->firstItem(),
+                'to' => $categories->lastItem(),
+            ],
         ]);
     }
 

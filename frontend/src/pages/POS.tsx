@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { getInventory } from "../services/inventoryService";
+import { getPOSProducts, type POSProduct } from "../services/inventoryService";
 import { createSale } from "../services/saleService";
 
-import type { InventoryProduct } from "../types/inventory";
 import type { CreateSaleRequest } from "../types/sale";
 
 /*
@@ -13,7 +12,7 @@ import type { CreateSaleRequest } from "../types/sale";
 */
 
 interface CartItem {
-  product: InventoryProduct;
+  product: POSProduct;
   quantity: number;
 }
 
@@ -76,7 +75,7 @@ export default function POS() {
   |--------------------------------------------------------------------------
   */
 
-  const [products, setProducts] = useState<InventoryProduct[]>([]);
+  const [products, setProducts] = useState<POSProduct[]>([]);
 
   const [cart, setCart] = useState<CartItem[]>([]);
 
@@ -84,13 +83,25 @@ export default function POS() {
 
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [lastPage, setLastPage] = useState(1);
+
   const [loading, setLoading] = useState(true);
+
+  const [fetching, setFetching] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
 
   const [error, setError] = useState("");
 
   const [successMessage, setSuccessMessage] = useState("");
+
+  /*
+  |--------------------------------------------------------------------------
+  | Initial Search Effect
+  |--------------------------------------------------------------------------
+  */
+
+  const isInitialSearchEffect = useRef(true);
 
   /*
   |--------------------------------------------------------------------------
@@ -114,6 +125,15 @@ export default function POS() {
 
   const [notes, setNotes] = useState("");
 
+  useEffect(() => {
+    if (showPaymentModal) {
+      setTimeout(() => {
+        amountPaidInputRef.current?.focus();
+        amountPaidInputRef.current?.select();
+      }, 100);
+    }
+  }, [showPaymentModal]);
+
   /*
   |--------------------------------------------------------------------------
   | Search Input Ref
@@ -121,34 +141,89 @@ export default function POS() {
   */
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const amountPaidInputRef = useRef<HTMLInputElement>(null);
 
   /*
   |--------------------------------------------------------------------------
-  | Load Inventory
+  | Load POS Products
   |--------------------------------------------------------------------------
   */
 
-  async function loadInventory() {
+  async function loadInventory(
+    page: number = 1,
+    keyword: string = search,
+    initialLoad: boolean = false,
+  ) {
     try {
-      setLoading(true);
+      if (initialLoad) {
+        setLoading(true);
+      } else {
+        setFetching(true);
+      }
 
       setError("");
 
-      const data = await getInventory();
+      const response = await getPOSProducts({
+        page,
+        per_page: PRODUCTS_PER_PAGE,
+        search: keyword.trim() || undefined,
+      });
 
-      setProducts(data);
+      setProducts(response.data);
+
+      setCurrentPage(Number(response.current_page));
+
+      setLastPage(Number(response.last_page));
     } catch (err) {
-      console.error("POS inventory loading error:", err);
+      console.error("POS products loading error:", err);
 
       setError("Unable to load inventory.");
     } finally {
-      setLoading(false);
+      if (initialLoad) {
+        setLoading(false);
+      } else {
+        setFetching(false);
+      }
     }
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | Initial Load
+  |--------------------------------------------------------------------------
+  */
+
   useEffect(() => {
-    loadInventory();
+    loadInventory(1, "", true);
   }, []);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Search Products
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    if (isInitialSearchEffect.current) {
+      isInitialSearchEffect.current = false;
+
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      loadInventory(1, search);
+    }, 400);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [search]);
+
+  useEffect(() => {
+    if (!loading) {
+      focusSearchInput();
+    }
+  }, [loading]);
 
   /*
   |--------------------------------------------------------------------------
@@ -164,58 +239,13 @@ export default function POS() {
 
   /*
   |--------------------------------------------------------------------------
-  | Search Products
+  | Auto Focus Barcode / Search Input
   |--------------------------------------------------------------------------
   */
 
-  const filteredProducts = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    if (!keyword) {
-      return products;
-    }
-
-    return products.filter((product) => {
-      const name = product.name?.toLowerCase() ?? "";
-
-      const sku = product.sku?.toLowerCase() ?? "";
-
-      const barcode = product.barcode?.toLowerCase() ?? "";
-
-      return (
-        name.includes(keyword) ||
-        sku.includes(keyword) ||
-        barcode.includes(keyword)
-      );
-    });
-  }, [products, search]);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Pagination
-  |--------------------------------------------------------------------------
-  */
-
-  const totalPages = Math.max(
-    Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE),
-    1,
-  );
-
   useEffect(() => {
-    setCurrentPage(1);
-  }, [search]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
-
-    return filteredProducts.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
-  }, [filteredProducts, currentPage]);
+    focusSearchInput();
+  }, []);
 
   /*
   |--------------------------------------------------------------------------
@@ -237,7 +267,7 @@ export default function POS() {
   |--------------------------------------------------------------------------
   */
 
-  function addToCart(product: InventoryProduct) {
+  function addToCart(product: POSProduct) {
     const availableStock = toNumber(product.stock);
 
     if (availableStock <= 0) {
@@ -286,50 +316,66 @@ export default function POS() {
   |--------------------------------------------------------------------------
   */
 
-  function handleBarcodeScan(value: string) {
+  async function handleBarcodeScan(value: string) {
     const scannedValue = value.trim();
 
     if (!scannedValue) {
       return;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Exact Barcode Match
-    |--------------------------------------------------------------------------
-    */
+    try {
+      setError("");
 
-    const product = products.find(
-      (item) => item.barcode?.trim() === scannedValue,
-    );
+      /*
+      |--------------------------------------------------------------------------
+      | Search Barcode Through POS API
+      |--------------------------------------------------------------------------
+      */
 
-    if (product) {
-      addToCart(product);
+      const response = await getPOSProducts({
+        page: 1,
+        per_page: PRODUCTS_PER_PAGE,
+        search: scannedValue,
+      });
 
-      setSearch("");
+      const product = response.data.find(
+        (item) => item.barcode?.trim() === scannedValue,
+      );
 
-      setCurrentPage(1);
+      if (product) {
+        addToCart(product);
 
-      setSuccessMessage(`${product.name} added to cart.`);
+        setSearch("");
 
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 2000);
+        setCurrentPage(1);
+
+        setSuccessMessage(`${product.name} added to cart.`);
+
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 2000);
+
+        focusSearchInput();
+
+        return;
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | If No Barcode Match
+      |--------------------------------------------------------------------------
+      */
+
+      setError(`Barcode "${scannedValue}" was not found.`);
 
       focusSearchInput();
+    } catch (err) {
+      console.error("Barcode search error:", err);
 
-      return;
+      setError("Unable to search barcode.");
+
+      focusSearchInput();
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | If No Barcode Match
-    |--------------------------------------------------------------------------
-    */
-
-    setError(`Barcode "${scannedValue}" was not found.`);
-
-    focusSearchInput();
   }
 
   /*
@@ -342,11 +388,17 @@ export default function POS() {
     setCart((currentCart) => {
       const product = products.find((item) => item.product_id === productId);
 
-      if (!product) {
+      const cartProduct = currentCart.find(
+        (item) => item.product.product_id === productId,
+      )?.product;
+
+      const selectedProduct = product ?? cartProduct;
+
+      if (!selectedProduct) {
         return currentCart;
       }
 
-      const availableStock = toNumber(product.stock);
+      const availableStock = toNumber(selectedProduct.stock);
 
       if (!Number.isFinite(quantity)) {
         return currentCart;
@@ -453,6 +505,30 @@ export default function POS() {
 
   /*
   |--------------------------------------------------------------------------
+  | Payment Shortcut
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    function handlePaymentShortcut(event: KeyboardEvent) {
+      if (event.key === "F4") {
+        event.preventDefault();
+
+        if (!showPaymentModal && cart.length > 0) {
+          openPaymentModal();
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handlePaymentShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", handlePaymentShortcut);
+    };
+  }, [cart.length, showPaymentModal]);
+
+  /*
+  |--------------------------------------------------------------------------
   | Close Payment
   |--------------------------------------------------------------------------
   */
@@ -523,11 +599,11 @@ export default function POS() {
 
       /*
       |--------------------------------------------------------------------------
-      | Refresh Inventory
+      | Refresh POS Products
       |--------------------------------------------------------------------------
       */
 
-      await loadInventory();
+      await loadInventory(currentPage, search);
 
       setTimeout(() => {
         setSuccessMessage("");
@@ -546,6 +622,32 @@ export default function POS() {
       setSubmitting(false);
     }
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Complete Sale Shortcut
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    function handleCompleteSaleShortcut(event: KeyboardEvent) {
+      if (event.key !== "Enter" || !showPaymentModal) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (!submitting && !insufficientPayment && amountPaid) {
+        handleCompleteSale();
+      }
+    }
+
+    window.addEventListener("keydown", handleCompleteSaleShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", handleCompleteSaleShortcut);
+    };
+  }, [showPaymentModal, submitting, insufficientPayment, amountPaid]);
 
   /*
   |--------------------------------------------------------------------------
@@ -646,7 +748,7 @@ export default function POS() {
                 if (event.key === "Enter") {
                   event.preventDefault();
 
-                  handleBarcodeScan(search);
+                  void handleBarcodeScan(search);
                 }
               }}
               placeholder="Scan barcode or search by name, SKU..."
@@ -658,19 +760,26 @@ export default function POS() {
               Barcode scanner: scan the product and it will automatically add to
               the cart.
             </p>
+
+            {fetching && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600" />
+                Searching...
+              </div>
+            )}
           </div>
 
           {/* PRODUCT GRID */}
 
           <div className="p-4">
-            {filteredProducts.length === 0 ? (
+            {products.length === 0 ? (
               <div className="flex min-h-[300px] items-center justify-center text-sm text-gray-500">
                 No products found.
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {paginatedProducts.map((product) => {
+                  {products.map((product) => {
                     const availableStock = toNumber(product.stock);
 
                     const inCart = getCartQuantity(product.product_id);
@@ -804,19 +913,21 @@ export default function POS() {
 
                 {/* PAGINATION */}
 
-                {totalPages > 1 && (
+                {lastPage > 1 && (
                   <div className="mt-6 flex items-center justify-between gap-4 border-t border-gray-100 pt-4">
                     <p className="text-xs text-gray-500">
-                      Page {currentPage} of {totalPages}
+                      Page {currentPage} of {lastPage}
                     </p>
 
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          setCurrentPage((page) => Math.max(page - 1, 1))
-                        }
-                        disabled={currentPage === 1}
+                        onClick={() => {
+                          if (currentPage > 1) {
+                            loadInventory(currentPage - 1, search);
+                          }
+                        }}
+                        disabled={currentPage === 1 || fetching}
                         className="h-9 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Previous
@@ -824,12 +935,12 @@ export default function POS() {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          setCurrentPage((page) =>
-                            Math.min(page + 1, totalPages),
-                          )
-                        }
-                        disabled={currentPage === totalPages}
+                        onClick={() => {
+                          if (currentPage < lastPage) {
+                            loadInventory(currentPage + 1, search);
+                          }
+                        }}
+                        disabled={currentPage === lastPage || fetching}
                         className="h-9 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Next
@@ -943,7 +1054,6 @@ export default function POS() {
                           onClick={() =>
                             setConfirmState({
                               type: "remove",
-
                               productId: item.product.product_id,
                             })
                           }
@@ -964,7 +1074,6 @@ export default function POS() {
                             onClick={() =>
                               updateQuantity(
                                 item.product.product_id,
-
                                 item.quantity - 1,
                               )
                             }
@@ -989,7 +1098,6 @@ export default function POS() {
 
                               updateQuantity(
                                 item.product.product_id,
-
                                 Number(value),
                               );
                             }}
@@ -1003,7 +1111,6 @@ export default function POS() {
                             onClick={() =>
                               updateQuantity(
                                 item.product.product_id,
-
                                 item.quantity + 1,
                               )
                             }
@@ -1090,11 +1197,13 @@ export default function POS() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setConfirmState({
                     type: null,
-                  })
-                }
+                  });
+
+                  focusSearchInput();
+                }}
                 className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Cancel
@@ -1172,11 +1281,13 @@ export default function POS() {
                 </label>
 
                 <input
+                  ref={amountPaidInputRef}
                   type="number"
                   min="0"
                   step="0.01"
                   value={amountPaid}
                   onChange={(event) => setAmountPaid(event.target.value)}
+                  onFocus={(event) => event.target.select()}
                   disabled={submitting}
                   className="h-11 w-full rounded-lg border border-gray-300 px-4 text-lg font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
