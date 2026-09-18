@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\POSProductController;
 
@@ -92,6 +93,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put(
             '/bir-settings/{birSetting}',
             [BirSettingController::class, 'update']
+        );
+
+        /*
+|----------------------------------------------------------------------
+| System Settings
+|----------------------------------------------------------------------
+*/
+
+        Route::get(
+            '/settings',
+            [SettingController::class, 'show']
+        );
+
+        Route::put(
+            '/settings',
+            [SettingController::class, 'update']
         );
     });
 

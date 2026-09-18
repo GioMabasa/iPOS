@@ -49,113 +49,249 @@ class InventoryController extends Controller
         $stockFilter = $validated['stock_filter'] ?? 'all';
         $productStatus = $validated['product_status'] ?? 'all';
 
-        $products = Product::query()
-            ->orderBy('name')
-            ->get();
+        /*
+        |--------------------------------------------------------------------------
+        | Get Products
+        |--------------------------------------------------------------------------
+        |
+        | Search and product status are database-level filters.
+        | This prevents unnecessary products from being loaded.
+        |
+        */
 
-        $data = $products->map(function (Product $product) use (
-            $inventoryService
-        ) {
-            $stock = $inventoryService->getCurrentStock($product);
-
-            $purchaseTransactions = InventoryTransaction::query()
-                ->where('product_id', $product->id)
-                ->where('type', 'purchase')
-                ->orderBy('created_at')
-                ->orderBy('id')
-                ->get();
-
-            $remainingLayers = [];
-
-            foreach ($purchaseTransactions as $transaction) {
-                $purchasedQuantity = (float) $transaction->quantity;
-
-                $allocatedQuantity = (float) SaleItemCost::query()
-                    ->where(
-                        'inventory_transaction_id',
-                        $transaction->id
-                    )
-                    ->selectRaw(
-                        'COALESCE(SUM(quantity - reversed_quantity), 0) AS allocated_quantity'
-                    )
-                    ->value('allocated_quantity');
-
-                $remainingQuantity = max(
-                    0,
-                    $purchasedQuantity - $allocatedQuantity
-                );
-
-                if ($remainingQuantity <= 0) {
-                    continue;
-                }
-
-                $remainingLayers[] = [
-                    'quantity' => $remainingQuantity,
-                    'unit_cost' => (float) $transaction->unit_cost,
-                ];
-            }
-
-            $remainingStock = max(0, $stock);
-            $inventoryValue = 0.0;
-
-            foreach ($remainingLayers as $layer) {
-                if ($remainingStock <= 0) {
-                    break;
-                }
-
-                $layerQuantity = min(
-                    $remainingStock,
-                    $layer['quantity']
-                );
-
-                $inventoryValue += round(
-                    $layerQuantity * $layer['unit_cost'],
-                    2
-                );
-
-                $remainingStock -= $layerQuantity;
-            }
-
-            $cost = $stock > 0
-                ? round($inventoryValue / $stock, 2)
-                : 0.0;
-
-            return [
-                'product_id' => $product->id,
-                'name' => $product->name,
-                'sku' => $product->sku,
-                'barcode' => $product->barcode,
-                'unit' => $product->unit,
-                'cost' => $cost,
-                'selling_price' => (float) $product->selling_price,
-                'stock' => $stock,
-                'stock_value' => round($inventoryValue, 2),
-                'minimum_stock' => (float) $product->minimum_stock,
-                'is_low_stock' => $stock <= (float) $product->minimum_stock,
-                'is_active' => (bool) $product->is_active,
-            ];
-        });
+        $productQuery = Product::query()
+            ->orderBy('name');
 
         if ($search !== '') {
-            $searchValue = strtolower($search);
-
-            $data = $data->filter(function (array $product) use (
-                $searchValue
-            ) {
-                return str_contains(
-                    strtolower($product['name']),
-                    $searchValue
-                )
-                    || str_contains(
-                        strtolower($product['sku']),
-                        $searchValue
-                    )
-                    || str_contains(
-                        strtolower($product['barcode'] ?? ''),
-                        $searchValue
-                    );
+            $productQuery->where(function ($query) use ($search) {
+                $query
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%");
             });
         }
+
+        if ($productStatus === 'active') {
+            $productQuery->where('is_active', true);
+        } elseif ($productStatus === 'inactive') {
+            $productQuery->where('is_active', false);
+        }
+
+        $products = $productQuery->get();
+
+        if ($products->isEmpty()) {
+            $badOrders = InventoryTransaction::query()
+                ->where('type', 'bad_order')
+                ->sum('quantity');
+
+            $adjustments = InventoryTransaction::query()
+                ->where('type', 'adjustment')
+                ->count();
+
+            return response()->json([
+                'data' => [],
+                'current_page' => 1,
+                'last_page' => 1,
+                'per_page' => $perPage,
+                'total' => 0,
+                'from' => null,
+                'to' => null,
+                'summary' => [
+                    'total_products' => 0,
+                    'total_stock' => 0,
+                    'low_stock' => 0,
+                    'out_of_stock' => 0,
+                    'bad_orders' => (float) $badOrders,
+                    'adjustments' => $adjustments,
+                ],
+            ]);
+        }
+
+        $productIds = $products
+            ->pluck('id')
+            ->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Get Current Stock In One Query
+        |--------------------------------------------------------------------------
+        |
+        | Instead of calling InventoryService::getCurrentStock() once per
+        | product, calculate stock for all products with one grouped query.
+        |
+        */
+
+        $stockByProduct = InventoryTransaction::query()
+            ->whereIn('product_id', $productIds)
+            ->select('product_id')
+            ->selectRaw("
+                COALESCE(SUM(
+                    CASE
+                        WHEN type IN ('purchase', 'refund') THEN quantity
+                        WHEN type IN ('sale', 'bad_order') THEN -quantity
+                        WHEN type = 'adjustment' THEN quantity
+                        ELSE 0
+                    END
+                ), 0) AS stock
+            ")
+            ->groupBy('product_id')
+            ->pluck('stock', 'product_id')
+            ->map(fn($stock) => (float) $stock);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Get Purchase Transactions In Bulk
+        |--------------------------------------------------------------------------
+        |
+        | These are the FIFO inventory layers used to calculate current cost
+        | and stock value.
+        |
+        */
+
+        $purchaseTransactions = InventoryTransaction::query()
+            ->whereIn('product_id', $productIds)
+            ->where('type', 'purchase')
+            ->orderBy('product_id')
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get([
+                'id',
+                'product_id',
+                'quantity',
+                'unit_cost',
+                'created_at',
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Get Sale Cost Allocations In Bulk
+        |--------------------------------------------------------------------------
+        |
+        | Instead of querying SaleItemCost once for every purchase transaction,
+        | load all allocations with one grouped query.
+        |
+        */
+
+        $allocatedByTransaction = collect();
+
+        if ($purchaseTransactions->isNotEmpty()) {
+            $allocatedByTransaction = SaleItemCost::query()
+                ->whereIn(
+                    'inventory_transaction_id',
+                    $purchaseTransactions->pluck('id')
+                )
+                ->select('inventory_transaction_id')
+                ->selectRaw("
+                    COALESCE(
+                        SUM(quantity - reversed_quantity),
+                        0
+                    ) AS allocated_quantity
+                ")
+                ->groupBy('inventory_transaction_id')
+                ->pluck(
+                    'allocated_quantity',
+                    'inventory_transaction_id'
+                )
+                ->map(fn($quantity) => (float) $quantity);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Build FIFO Layers By Product
+        |--------------------------------------------------------------------------
+        */
+
+        $layersByProduct = [];
+
+        foreach ($purchaseTransactions as $transaction) {
+            $purchasedQuantity = (float) $transaction->quantity;
+
+            $allocatedQuantity = $allocatedByTransaction->get(
+                $transaction->id,
+                0.0
+            );
+
+            $remainingQuantity = max(
+                0,
+                $purchasedQuantity - $allocatedQuantity
+            );
+
+            if ($remainingQuantity <= 0) {
+                continue;
+            }
+
+            $layersByProduct[$transaction->product_id][] = [
+                'quantity' => $remainingQuantity,
+                'unit_cost' => (float) $transaction->unit_cost,
+            ];
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Build Inventory Data
+        |--------------------------------------------------------------------------
+        */
+
+        $data = $products
+            ->map(function (Product $product) use (
+                $stockByProduct,
+                $layersByProduct
+            ) {
+                $stock = $stockByProduct->get(
+                    $product->id,
+                    0.0
+                );
+
+                $minimumStock = (float) $product->minimum_stock;
+
+                $remainingStock = max(0, $stock);
+                $inventoryValue = 0.0;
+
+                $layers = $layersByProduct[$product->id] ?? [];
+
+                foreach ($layers as $layer) {
+                    if ($remainingStock <= 0) {
+                        break;
+                    }
+
+                    $layerQuantity = min(
+                        $remainingStock,
+                        $layer['quantity']
+                    );
+
+                    $inventoryValue += round(
+                        $layerQuantity * $layer['unit_cost'],
+                        2
+                    );
+
+                    $remainingStock -= $layerQuantity;
+                }
+
+                $cost = $stock > 0
+                    ? round($inventoryValue / $stock, 2)
+                    : 0.0;
+
+                return [
+                    'product_id' => $product->id,
+                    'name' => $product->name,
+                    'sku' => $product->sku,
+                    'barcode' => $product->barcode,
+                    'unit' => $product->unit,
+                    'cost' => $cost,
+                    'selling_price' => (float) $product->selling_price,
+                    'stock' => $stock,
+                    'stock_value' => round($inventoryValue, 2),
+                    'minimum_stock' => $minimumStock,
+                    'is_low_stock' => $stock <= $minimumStock,
+                    'is_active' => (bool) $product->is_active,
+                ];
+            });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Stock Filter
+        |--------------------------------------------------------------------------
+        */
 
         $data = $data->filter(function (array $product) use (
             $stockFilter
@@ -175,22 +311,13 @@ class InventoryController extends Controller
                 default =>
                 true,
             };
-        });
-
-        $data = $data->filter(function (array $product) use (
-            $productStatus
-        ) {
-            return match ($productStatus) {
-                'active' =>
-                $product['is_active'] === true,
-
-                'inactive' =>
-                $product['is_active'] === false,
-
-                default =>
-                true,
-            };
         })->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Inventory Summary
+        |--------------------------------------------------------------------------
+        */
 
         $badOrders = InventoryTransaction::query()
             ->where('type', 'bad_order')
@@ -237,8 +364,12 @@ class InventoryController extends Controller
             'summary' => [
                 'total_products' => $data->count(),
                 'total_stock' => $data->sum('stock'),
-                'low_stock' => $data->where('is_low_stock', true)->count(),
-                'out_of_stock' => $data->where('stock', '<=', 0)->count(),
+                'low_stock' => $data
+                    ->where('is_low_stock', true)
+                    ->count(),
+                'out_of_stock' => $data
+                    ->where('stock', '<=', 0)
+                    ->count(),
                 'bad_orders' => (float) $badOrders,
                 'adjustments' => $adjustments,
             ],
@@ -284,20 +415,38 @@ class InventoryController extends Controller
             ->orderBy('id')
             ->get();
 
+        $allocatedByTransaction = collect();
+
+        if ($purchaseTransactions->isNotEmpty()) {
+            $allocatedByTransaction = SaleItemCost::query()
+                ->whereIn(
+                    'inventory_transaction_id',
+                    $purchaseTransactions->pluck('id')
+                )
+                ->select('inventory_transaction_id')
+                ->selectRaw("
+                    COALESCE(
+                        SUM(quantity - reversed_quantity),
+                        0
+                    ) AS allocated_quantity
+                ")
+                ->groupBy('inventory_transaction_id')
+                ->pluck(
+                    'allocated_quantity',
+                    'inventory_transaction_id'
+                )
+                ->map(fn($quantity) => (float) $quantity);
+        }
+
         $remainingLayers = [];
 
         foreach ($purchaseTransactions as $transaction) {
             $purchasedQuantity = (float) $transaction->quantity;
 
-            $allocatedQuantity = (float) SaleItemCost::query()
-                ->where(
-                    'inventory_transaction_id',
-                    $transaction->id
-                )
-                ->selectRaw(
-                    'COALESCE(SUM(quantity - reversed_quantity), 0) AS allocated_quantity'
-                )
-                ->value('allocated_quantity');
+            $allocatedQuantity = $allocatedByTransaction->get(
+                $transaction->id,
+                0.0
+            );
 
             $remainingQuantity = max(
                 0,

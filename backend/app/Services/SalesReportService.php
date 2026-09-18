@@ -6,6 +6,7 @@ use App\Models\Sale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use App\Models\SaleItem;
 
 class SalesReportService
 {
@@ -260,9 +261,8 @@ class SalesReportService
     /**
      * Calculate COGS for one sale item.
      */
-    private function getItemCOGS(
-        $saleItem
-    ): float {
+    private function getItemCOGS(SaleItem $saleItem): float
+    {
         return round(
             $saleItem->costs->sum(
                 function ($cost) {

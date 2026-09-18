@@ -34,6 +34,10 @@ export default function Inventory() {
     "all" | "in_stock" | "low_stock" | "out_of_stock"
   >("all");
 
+  const [productStatusFilter, setProductStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("active");
+
   const PER_PAGE = 20;
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -103,7 +107,8 @@ export default function Inventory() {
         per_page: PER_PAGE,
         search,
         stock_filter: stockFilter,
-      });
+        product_status: productStatusFilter,
+      } as Parameters<typeof getInventory>[0]);
 
       setInventory(response.data);
       setInventorySummary(response.summary);
@@ -136,7 +141,7 @@ export default function Inventory() {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [search, stockFilter]);
+  }, [search, stockFilter, productStatusFilter]);
 
   function goToPage(page: number) {
     if (page < 1 || page > lastPage || page === currentPage || loading) {
@@ -314,6 +319,33 @@ export default function Inventory() {
 
   /*
   |--------------------------------------------------------------------------
+  | Barcode Scanner
+  |--------------------------------------------------------------------------
+  */
+
+  const handleAdjustmentBarcodeScan = (barcode: string) => {
+    const scannedBarcode = barcode.trim();
+
+    if (!scannedBarcode) {
+      return;
+    }
+
+    const product = inventory.find(
+      (item) =>
+        item.barcode &&
+        item.barcode.trim().toLowerCase() === scannedBarcode.toLowerCase(),
+    );
+
+    if (!product) {
+      setAdjustmentError(`No product found for barcode "${scannedBarcode}".`);
+      return;
+    }
+
+    selectAdjustmentProduct(product);
+  };
+
+  /*
+  |--------------------------------------------------------------------------
   | Save Adjustment
   |--------------------------------------------------------------------------
   */
@@ -462,6 +494,24 @@ export default function Inventory() {
     return {
       label: "In Stock",
       className: "bg-green-100 text-green-700",
+    };
+  };
+
+  const getProductStatus = (product: InventoryProduct) => {
+    const isActive = Boolean(
+      (product as InventoryProduct & { is_active?: boolean }).is_active,
+    );
+
+    if (isActive) {
+      return {
+        label: "Active",
+        className: "bg-green-100 text-green-700",
+      };
+    }
+
+    return {
+      label: "Inactive",
+      className: "bg-gray-100 text-gray-600",
     };
   };
 
@@ -657,12 +707,29 @@ export default function Inventory() {
           <option value="out_of_stock">Out of Stock</option>
         </select>
 
-        {(search || stockFilter !== "all") && (
+        <select
+          value={productStatusFilter}
+          onChange={(e) =>
+            setProductStatusFilter(
+              e.target.value as "all" | "active" | "inactive",
+            )
+          }
+          className="rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="all">All Products</option>
+        </select>
+
+        {(search ||
+          stockFilter !== "all" ||
+          productStatusFilter !== "active") && (
           <button
             type="button"
             onClick={() => {
               setSearch("");
               setStockFilter("all");
+              setProductStatusFilter("active");
             }}
             className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
@@ -729,7 +796,11 @@ export default function Inventory() {
                   </th>
 
                   <th className="px-4 py-3 text-center font-semibold text-gray-600">
-                    Status
+                    Stock Status
+                  </th>
+
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600">
+                    Product Status
                   </th>
 
                   <th className="px-4 py-3 text-center font-semibold text-gray-600">
@@ -741,6 +812,7 @@ export default function Inventory() {
               <tbody>
                 {inventory.map((product) => {
                   const stockStatus = getStockStatus(product);
+                  const productStatus = getProductStatus(product);
 
                   return (
                     <tr
@@ -790,6 +862,14 @@ export default function Inventory() {
                           className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${stockStatus.className}`}
                         >
                           {stockStatus.label}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3 text-center">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${productStatus.className}`}
+                        >
+                          {productStatus.label}
                         </span>
                       </td>
 
@@ -1437,6 +1517,15 @@ export default function Inventory() {
                       onChange={(e) => {
                         setAdjustmentProductSearch(e.target.value);
                         setAdjustmentError("");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") {
+                          return;
+                        }
+
+                        e.preventDefault();
+
+                        handleAdjustmentBarcodeScan(adjustmentProductSearch);
                       }}
                       disabled={adjustmentLoading}
                       autoFocus

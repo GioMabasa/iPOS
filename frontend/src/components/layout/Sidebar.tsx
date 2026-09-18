@@ -68,11 +68,6 @@ const menuItems: MenuItem[] = [
     path: "/settings",
     roles: ["admin"],
   },
-  {
-    label: "BIR Settings",
-    path: "/bir-settings",
-    roles: ["admin"],
-  },
 ];
 
 export default function Sidebar() {

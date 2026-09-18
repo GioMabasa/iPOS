@@ -254,26 +254,6 @@ export default function Products() {
 
   /*
   |--------------------------------------------------------------------------
-  | Pagination Numbers
-  |--------------------------------------------------------------------------
-  */
-
-  function getPageNumbers() {
-    const pages: number[] = [];
-
-    const start = Math.max(1, currentPage - 2);
-
-    const end = Math.min(lastPage, currentPage + 2);
-
-    for (let page = start; page <= end; page++) {
-      pages.push(page);
-    }
-
-    return pages;
-  }
-
-  /*
-  |--------------------------------------------------------------------------
   | Results Range
   |--------------------------------------------------------------------------
   */
@@ -450,6 +430,8 @@ export default function Products() {
 
                       <th className="px-6 py-4 font-semibold">Selling Price</th>
 
+                      <th className="px-6 py-4 font-semibold">Stock</th>
+
                       <th className="px-6 py-4 font-semibold">Min. Stock</th>
 
                       <th className="px-6 py-4 font-semibold">Status</th>
@@ -510,6 +492,20 @@ export default function Products() {
                               maximumFractionDigits: 2,
                             },
                           )}
+                        </td>
+
+                        {/* Stock */}
+
+                        <td className="px-6 py-4 font-medium text-gray-900">
+                          {Number(
+                            (
+                              product as Product & {
+                                stock?: number | string;
+                              }
+                            ).stock ?? 0,
+                          ).toLocaleString("en-PH", {
+                            maximumFractionDigits: 2,
+                          })}
                         </td>
 
                         {/* Minimum Stock */}
