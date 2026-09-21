@@ -40,7 +40,7 @@ export default function TopSellingProducts({
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="h-[520px] overflow-scroll rounded-xl border border-gray-200 bg-white shadow-sm">
         {products.length === 0 ? (
           <div className="flex min-h-[180px] items-center justify-center p-6">
             <p className="text-sm text-gray-500">

@@ -564,6 +564,7 @@ class ReportController extends Controller
     }
 
 
+
     /**
      * Dashboard report.
      */
@@ -572,15 +573,53 @@ class ReportController extends Controller
         DashboardReportService $dashboardReportService
     ): JsonResponse {
 
+        /*
+    |----------------------------------------------------------------------
+    | Main Dashboard Period
+    |----------------------------------------------------------------------
+    */
+
         $range = $this->resolveDateRange(
             $request
         );
 
 
+        /*
+    |----------------------------------------------------------------------
+    | Top Selling Products Period
+    |----------------------------------------------------------------------
+    */
+
+        $topProductsPeriod = $request->input(
+            'top_products_period',
+            'this_month'
+        );
+
+        $topProductsRequest = Request::create(
+            '',
+            'GET',
+            [
+                'period' => $topProductsPeriod,
+            ]
+        );
+
+        $topProductsRange = $this->resolveDateRange(
+            $topProductsRequest
+        );
+
+
+        /*
+    |----------------------------------------------------------------------
+    | Dashboard
+    |----------------------------------------------------------------------
+    */
+
         $data =
             $dashboardReportService->dashboard(
                 $range['from'],
-                $range['to']
+                $range['to'],
+                $topProductsRange['from'],
+                $topProductsRange['to']
             );
 
 
@@ -597,12 +636,23 @@ class ReportController extends Controller
 
                 'to' =>
                 $range['to'],
+
+                'top_products_period' =>
+                $topProductsPeriod,
+
+                'top_products_from' =>
+                $topProductsRange['from'],
+
+                'top_products_to' =>
+                $topProductsRange['to'],
             ],
 
             'data' =>
             $data,
         ]);
     }
+
+
 
 
     /**

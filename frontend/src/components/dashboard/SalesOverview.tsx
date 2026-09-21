@@ -1,4 +1,5 @@
 import type { SalesSummary } from "../../types/report";
+import { useAuth } from "../../context/AuthContext";
 
 interface SalesOverviewProps {
   sales: SalesSummary;
@@ -18,6 +19,10 @@ function formatNumber(value: number): string {
 }
 
 export default function SalesOverview({ sales }: SalesOverviewProps) {
+  const { user } = useAuth();
+
+  const isCashier = user?.role === "cashier";
+
   return (
     <section>
       <div className="mb-4">
@@ -28,7 +33,11 @@ export default function SalesOverview({ sales }: SalesOverviewProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+          isCashier ? "xl:grid-cols-2" : "xl:grid-cols-4"
+        }`}
+      >
         {/* TOTAL SALES */}
 
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -55,27 +64,33 @@ export default function SalesOverview({ sales }: SalesOverviewProps) {
 
         {/* GROSS PROFIT */}
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Gross Profit</p>
+        {!isCashier && (
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">Gross Profit</p>
 
-          <p className="mt-2 text-2xl font-bold text-emerald-600">
-            {formatCurrency(sales.gross_profit)}
-          </p>
+            <p className="mt-2 text-2xl font-bold text-emerald-600">
+              {formatCurrency(sales.gross_profit)}
+            </p>
 
-          <p className="mt-1 text-xs text-gray-500">Sales minus COGS</p>
-        </div>
+            <p className="mt-1 text-xs text-gray-500">Sales minus COGS</p>
+          </div>
+        )}
 
         {/* GROSS MARGIN */}
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Gross Margin</p>
+        {!isCashier && (
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">Gross Margin</p>
 
-          <p className="mt-2 text-2xl font-bold text-gray-900">
-            {Number(sales.gross_margin).toFixed(2)}%
-          </p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">
+              {Number(sales.gross_margin).toFixed(2)}%
+            </p>
 
-          <p className="mt-1 text-xs text-gray-500">Gross profit percentage</p>
-        </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Gross profit percentage
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

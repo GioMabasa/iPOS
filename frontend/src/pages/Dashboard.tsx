@@ -9,6 +9,8 @@ import InventoryMovement from "../components/dashboard/InventoryMovement";
 import LowStockProducts from "../components/dashboard/LowStockProducts";
 import VoidRefund from "../components/dashboard/VoidRefund";
 
+import { useAuth } from "../context/AuthContext";
+
 import type {
   DashboardData,
   ReportPeriod,
@@ -60,11 +62,25 @@ const emptyDashboard: DashboardData = {
 export default function Dashboard() {
   /*
   |--------------------------------------------------------------------------
+  | Auth
+  |--------------------------------------------------------------------------
+  */
+
+  const { user } = useAuth();
+
+  const isCashier = user?.role === "cashier";
+
+  /*
+  |--------------------------------------------------------------------------
   | State
   |--------------------------------------------------------------------------
   */
 
   const [period, setPeriod] = useState<ReportPeriod>("today");
+
+  const [salesTrendPeriod] = useState<ReportPeriod>("this_month");
+
+  const [topProductsPeriod] = useState<ReportPeriod>("this_month");
 
   const [from, setFrom] = useState("");
 
@@ -97,6 +113,8 @@ export default function Dashboard() {
       const params = {
         period: selectedPeriod,
 
+        top_products_period: topProductsPeriod,
+
         ...(selectedPeriod === "custom"
           ? {
               from: customFrom ?? from,
@@ -106,10 +124,14 @@ export default function Dashboard() {
           : {}),
       };
 
+      const salesTrendParams = {
+        period: salesTrendPeriod,
+      };
+
       const [dashboardResponse, salesTrendResponse] = await Promise.all([
         getDashboardReport(params),
 
-        getSalesTrend(params),
+        getSalesTrend(salesTrendParams),
       ]);
 
       setDashboard(dashboardResponse.data);
@@ -336,25 +358,33 @@ export default function Dashboard() {
               SALES TREND
           ====================================================== */}
 
-          <SalesTrend data={salesTrend} />
+          {!isCashier && <SalesTrend data={salesTrend} />}
 
           {/* ======================================================
-              TOP SELLING PRODUCTS
+              TOP SELLING PRODUCTS + LOW STOCK
           ====================================================== */}
 
-          <TopSellingProducts products={dashboard.top_products} />
+          {!isCashier && (
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+              {/* ====================================================
+                  TOP SELLING PRODUCTS
+              ==================================================== */}
+
+              <TopSellingProducts products={dashboard.top_products} />
+
+              {/* ====================================================
+                  LOW STOCK
+              ==================================================== */}
+
+              <LowStockProducts products={dashboard.low_stock} />
+            </div>
+          )}
 
           {/* ======================================================
               INVENTORY MOVEMENT
           ====================================================== */}
 
-          <InventoryMovement inventory={dashboard.inventory} />
-
-          {/* ======================================================
-              LOW STOCK
-          ====================================================== */}
-
-          <LowStockProducts products={dashboard.low_stock} />
+          {!isCashier && <InventoryMovement inventory={dashboard.inventory} />}
 
           {/* ======================================================
               VOID & REFUND

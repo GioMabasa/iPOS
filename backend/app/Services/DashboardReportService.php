@@ -15,7 +15,9 @@ class DashboardReportService
      */
     public function dashboard(
         ?string $from = null,
-        ?string $to = null
+        ?string $to = null,
+        ?string $topProductsFrom = null,
+        ?string $topProductsTo = null
     ): array {
 
         /*
@@ -64,8 +66,8 @@ class DashboardReportService
         $topProducts =
             $this->salesReportService
             ->topSellingProducts(
-                $from,
-                $to
+                $topProductsFrom ?? $from,
+                $topProductsTo ?? $to
             )
             ->take(5)
             ->values();
