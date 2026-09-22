@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getPOSProducts, type POSProduct } from "../services/inventoryService";
 import { createSale } from "../services/saleService";
 import { getCustomers } from "../services/customerService";
+import { getSettings } from "../services/settingService";
 
 import type { CreateSaleRequest } from "../types/sale";
 import type { Customer } from "../types/customer";
@@ -155,6 +156,8 @@ export default function POS() {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
 
+  const [defaultCustomer, setDefaultCustomer] = useState("Walk-in Customer");
+
   const [customerLoading, setCustomerLoading] = useState(false);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(
@@ -252,12 +255,31 @@ export default function POS() {
 
   /*
   |--------------------------------------------------------------------------
+  | Load Settings
+  |--------------------------------------------------------------------------
+  */
+
+  async function loadSettings() {
+    try {
+      const response = await getSettings();
+
+      setDefaultCustomer(
+        response.data.default_customer?.trim() || "Walk-in Customer",
+      );
+    } catch (err) {
+      console.error("Settings loading error:", err);
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
   | Initial Load
   |--------------------------------------------------------------------------
   */
 
   useEffect(() => {
     loadInventory(1, "", true);
+    void loadSettings();
   }, []);
 
   /*
@@ -1452,7 +1474,7 @@ export default function POS() {
                   disabled={submitting || customerLoading}
                   className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 >
-                  <option value="">Walk-in Customer</option>
+                  <option value="">{defaultCustomer}</option>
 
                   {customers
                     .filter((customer) => customer.is_active)

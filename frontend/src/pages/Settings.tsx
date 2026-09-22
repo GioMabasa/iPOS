@@ -67,7 +67,7 @@ export default function Settings() {
         email: response.data.email ?? "",
         tin: response.data.tin ?? "",
         default_customer: response.data.default_customer ?? "walk-in",
-        currency: response.data.currency ?? "PHP",
+        currency: "PHP",
         date_format: response.data.date_format ?? "Y-m-d",
         timezone: response.data.timezone ?? "Asia/Manila",
       });
@@ -148,7 +148,7 @@ export default function Settings() {
         email: response.data.email ?? "",
         tin: response.data.tin ?? "",
         default_customer: response.data.default_customer ?? "walk-in",
-        currency: response.data.currency ?? "PHP",
+        currency: "PHP",
         date_format: response.data.date_format ?? "Y-m-d",
         timezone: response.data.timezone ?? "Asia/Manila",
       });
@@ -365,13 +365,13 @@ export default function Settings() {
               Default Customer
             </label>
 
-            <select
+            <input
+              type="text"
               value={formData.default_customer}
               onChange={(e) => handleChange("default_customer", e.target.value)}
+              placeholder="e.g. Walk-in Customer"
               className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:border-blue-500"
-            >
-              <option value="walk-in">Walk-in Customer</option>
-            </select>
+            />
 
             <p className="mt-1 text-xs text-gray-500">
               Customer automatically used when no specific customer is selected.
@@ -383,13 +383,16 @@ export default function Settings() {
               Currency
             </label>
 
-            <select
-              value={formData.currency}
-              onChange={(e) => handleChange("currency", e.target.value)}
-              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:border-blue-500"
-            >
-              <option value="PHP">PHP (₱)</option>
-            </select>
+            <input
+              type="text"
+              value="PHP (₱)"
+              readOnly
+              className="w-full rounded-lg border bg-gray-50 px-4 py-2.5 text-sm text-gray-700 outline-none"
+            />
+
+            <p className="mt-1 text-xs text-gray-500">
+              iPOS uses Philippine Peso (PHP) as its only currency.
+            </p>
           </div>
         </div>
 

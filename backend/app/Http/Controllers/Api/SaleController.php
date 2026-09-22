@@ -564,10 +564,17 @@ class SaleController extends Controller
      * Void completed sale.
      */
     public function void(
+        Request $request,
         Sale $sale,
         InventoryService $inventoryService,
         InventoryCostService $inventoryCostService
     ): JsonResponse {
+
+        if (!in_array($request->user()->role, ['admin', 'manager'])) {
+            return response()->json([
+                'message' => 'Only Manager or Admin can void a sale directly.',
+            ], 403);
+        }
 
         if ($sale->status !== 'completed') {
             return response()->json([
@@ -650,6 +657,12 @@ class SaleController extends Controller
         InventoryCostService $inventoryCostService
     ): JsonResponse {
 
+        if (!in_array($request->user()->role, ['admin', 'manager'])) {
+            return response()->json([
+                'message' => 'Only Manager or Admin can refund a sale directly.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'items' => [
                 'required',
@@ -727,7 +740,7 @@ class SaleController extends Controller
 
                 /*
              * Return selected quantity to inventory.
-             */
+                 */
                 $inventoryService->refundStock(
                     $saleItem->product,
                     $refundQuantity,
@@ -741,7 +754,7 @@ class SaleController extends Controller
                 /*
              * Reverse only the refunded quantity
              * from the original FIFO allocation.
-             */
+                 */
                 $inventoryCostService->reverseFIFO(
                     $saleItem,
                     $refundQuantity
@@ -749,7 +762,7 @@ class SaleController extends Controller
 
                 /*
              * Track refunded quantity.
-             */
+                 */
                 $saleItem->increment(
                     'refunded_quantity',
                     $refundQuantity
@@ -759,7 +772,7 @@ class SaleController extends Controller
             /*
          * Mark the entire sale as refunded only when
          * every sale item has been fully refunded.
-         */
+             */
             $sale->refresh();
 
             $fullyRefunded = $sale->items()

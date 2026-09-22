@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getSettings } from "../../services/settingService";
 
 interface MenuItem {
   label: string;
@@ -33,11 +35,11 @@ const menuItems: MenuItem[] = [
     path: "/suppliers",
     roles: ["admin", "manager"],
   },
-  //   {
-  //     label: "Customers",
-  //     path: "/customers",
-  //     roles: ["admin", "manager", "cashier"],
-  //   },
+  {
+    label: "Customers",
+    path: "/customers",
+    roles: ["admin", "manager"],
+  },
   {
     label: "Purchases",
     path: "/purchases",
@@ -52,6 +54,11 @@ const menuItems: MenuItem[] = [
     label: "Sales",
     path: "/sales",
     roles: ["admin", "manager", "cashier"],
+  },
+  {
+    label: "Receivables",
+    path: "/receivables",
+    roles: ["admin", "manager"],
   },
   {
     label: "Approval Requests",
@@ -73,6 +80,22 @@ const menuItems: MenuItem[] = [
 export default function Sidebar() {
   const { user } = useAuth();
 
+  const [businessName, setBusinessName] = useState("iPOS");
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const response = await getSettings();
+
+        setBusinessName(response.data.business_name?.trim() || "iPOS");
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      }
+    }
+
+    void loadSettings();
+  }, []);
+
   const visibleItems = menuItems.filter((item) =>
     user ? item.roles.includes(user.role) : false,
   );
@@ -80,7 +103,7 @@ export default function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-gray-900 text-white">
       <div className="flex h-16 items-center border-b border-gray-800 px-6">
-        <h1 className="text-2xl font-bold">iPOS</h1>
+        <h1 className="text-2xl font-bold">{businessName}</h1>
       </div>
 
       <nav className="p-4">

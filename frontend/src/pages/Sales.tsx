@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Sale, SaleItem } from "../types/sale";
-import { getSales } from "../services/saleService";
+import { getSales, voidSale, refundSale } from "../services/saleService";
 import { getUsers } from "../services/userService";
 import {
   createVoidRequest,
@@ -417,6 +417,104 @@ export default function Sales() {
     setRequestError("");
     setRequestSuccess("");
     setRefundQuantities({});
+  };
+
+  const handleDirectAction = async (action: "void" | "refund") => {
+    if (!selectedSale) {
+      return;
+    }
+
+    if (action === "void") {
+      const confirmed = window.confirm(
+        `Are you sure you want to void sale ${selectedSale.sale_number}?`,
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        setRequestLoading(true);
+        setRequestError("");
+        setRequestSuccess("");
+
+        await voidSale(selectedSale.id);
+
+        setRequestSuccess("Sale voided successfully.");
+
+        await loadSales();
+
+        setTimeout(() => {
+          setSelectedSale(null);
+          setRequestSuccess("");
+        }, 1000);
+      } catch (err: any) {
+        console.error(err);
+
+        const message = err?.response?.data?.message ?? "Unable to void sale.";
+
+        setRequestError(message);
+      } finally {
+        setRequestLoading(false);
+      }
+
+      return;
+    }
+
+    const refundItems = selectedSale.items
+      .map((item) => {
+        const requestedQuantity = Number(refundQuantities[item.id] ?? 0);
+        const refundedQuantity = Number(item.refunded_quantity ?? 0);
+        const remainingQuantity = Number(item.quantity) - refundedQuantity;
+
+        return {
+          sale_item_id: item.id,
+          quantity: Math.min(requestedQuantity, remainingQuantity),
+        };
+      })
+      .filter((item) => item.quantity > 0);
+
+    if (refundItems.length === 0) {
+      setRequestError("Please select at least one item to refund.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to refund the selected items from sale ${selectedSale.sale_number}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setRequestLoading(true);
+      setRequestError("");
+      setRequestSuccess("");
+
+      await refundSale(selectedSale.id, refundItems);
+
+      setRequestSuccess("Refund processed successfully.");
+
+      await loadSales();
+
+      setTimeout(() => {
+        setSelectedSale(null);
+        setRequestAction(null);
+        setRequestReason("");
+        setRequestSuccess("");
+        setRefundQuantities({});
+      }, 1000);
+    } catch (err: any) {
+      console.error(err);
+
+      const message =
+        err?.response?.data?.message ?? "Unable to process refund.";
+
+      setRequestError(message);
+    } finally {
+      setRequestLoading(false);
+    }
   };
 
   const handleRequestSubmit = async () => {
@@ -1225,6 +1323,7 @@ export default function Sales() {
             {/* Actions */}
             <div className="flex items-center justify-between border-t px-6 py-4">
               <div className="flex items-center gap-2">
+                {/* Cashier - Request Approval */}
                 {user?.role === "cashier" &&
                   selectedSale.status === "completed" &&
                   (() => {
@@ -1288,12 +1387,62 @@ export default function Sales() {
                       </>
                     );
                   })()}
+
+                {/* Manager/Admin - Direct Void */}
+                {(user?.role === "admin" || user?.role === "manager") &&
+                  selectedSale.status === "completed" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleDirectAction("void")}
+                        disabled={requestLoading}
+                        className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Void
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRequestAction("refund");
+                          setRequestReason("");
+                          setRequestError("");
+                          setRequestSuccess("");
+
+                          const quantities: Record<number, number> = {};
+
+                          selectedSale.items.forEach((item) => {
+                            quantities[item.id] = 0;
+                          });
+
+                          setRefundQuantities(quantities);
+                        }}
+                        disabled={requestLoading}
+                        className="rounded-lg border border-yellow-300 px-4 py-2 text-sm font-medium text-yellow-600 hover:bg-yellow-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Refund
+                      </button>
+                    </>
+                  )}
+
+                {requestSuccess && (
+                  <span className="rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-700">
+                    {requestSuccess}
+                  </span>
+                )}
+
+                {requestError && !requestAction && (
+                  <span className="rounded-lg bg-red-100 px-4 py-2 text-sm font-medium text-red-700">
+                    {requestError}
+                  </span>
+                )}
               </div>
 
               <button
                 type="button"
                 onClick={() => setSelectedSale(null)}
-                className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                disabled={requestLoading}
+                className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Close
               </button>
@@ -1302,19 +1451,27 @@ export default function Sales() {
         </div>
       )}
 
-      {/* Void / Refund Request Modal */}
+      {/* Void / Refund Modal */}
       {selectedSale && requestAction && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-4xl rounded-xl bg-white shadow-xl">
             <div className="border-b px-6 py-4">
               <h2 className="text-xl font-bold text-gray-800">
-                {requestAction === "void"
-                  ? "Request Void Approval"
-                  : "Request Refund Approval"}
+                {user?.role === "cashier"
+                  ? requestAction === "void"
+                    ? "Request Void Approval"
+                    : "Request Refund Approval"
+                  : requestAction === "void"
+                    ? "Void Sale"
+                    : "Refund Sale"}
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Submit this request to a Manager or Admin for approval.
+                {user?.role === "cashier"
+                  ? "Submit this request to a Manager or Admin for approval."
+                  : requestAction === "void"
+                    ? "Confirm that you want to void this completed sale."
+                    : "Select the items and quantities to refund."}
               </p>
             </div>
 
@@ -1468,26 +1625,29 @@ export default function Sales() {
                 </div>
               )}
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Reason
-                </label>
+              {/* Reason - Cashier Request Only */}
+              {user?.role === "cashier" && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Reason
+                  </label>
 
-                <textarea
-                  value={requestReason}
-                  onChange={(e) => setRequestReason(e.target.value)}
-                  onFocus={selectAllOnFocus}
-                  rows={4}
-                  maxLength={1000}
-                  placeholder="Enter reason for this request..."
-                  className="w-full rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
-                  disabled={requestLoading}
-                />
+                  <textarea
+                    value={requestReason}
+                    onChange={(e) => setRequestReason(e.target.value)}
+                    onFocus={selectAllOnFocus}
+                    rows={4}
+                    maxLength={1000}
+                    placeholder="Enter reason for this request..."
+                    className="w-full rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
+                    disabled={requestLoading}
+                  />
 
-                <div className="mt-1 text-right text-xs text-gray-400">
-                  {requestReason.length}/1000
+                  <div className="mt-1 text-right text-xs text-gray-400">
+                    {requestReason.length}/1000
+                  </div>
                 </div>
-              </div>
+              )}
 
               {requestError && (
                 <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
@@ -1512,25 +1672,41 @@ export default function Sales() {
                 Cancel
               </button>
 
-              <button
-                type="button"
-                onClick={handleRequestSubmit}
-                disabled={
-                  requestLoading ||
-                  !requestReason.trim() ||
-                  (requestAction === "refund" &&
+              {user?.role === "cashier" ? (
+                <button
+                  type="button"
+                  onClick={handleRequestSubmit}
+                  disabled={
+                    requestLoading ||
+                    !requestReason.trim() ||
+                    (requestAction === "refund" &&
+                      !Object.values(refundQuantities).some(
+                        (quantity) => Number(quantity) > 0,
+                      ))
+                  }
+                  className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
+                    requestAction === "void"
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-yellow-600 hover:bg-yellow-700"
+                  }`}
+                >
+                  {requestLoading ? "Submitting..." : "Request Approval"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleDirectAction("refund")}
+                  disabled={
+                    requestLoading ||
                     !Object.values(refundQuantities).some(
                       (quantity) => Number(quantity) > 0,
-                    ))
-                }
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
-                  requestAction === "void"
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-yellow-600 hover:bg-yellow-700"
-                }`}
-              >
-                {requestLoading ? "Submitting..." : "Request Approval"}
-              </button>
+                    )
+                  }
+                  className="rounded-lg bg-yellow-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 hover:bg-yellow-700"
+                >
+                  {requestLoading ? "Processing..." : "Process Refund"}
+                </button>
+              )}
             </div>
           </div>
         </div>

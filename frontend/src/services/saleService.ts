@@ -89,3 +89,35 @@ export async function createSale(
 
   return response.data;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Void Sale - Manager/Admin Direct Action
+|--------------------------------------------------------------------------
+*/
+
+export async function voidSale(saleId: number): Promise<SaleResponse> {
+  const response = await api.post<SaleResponse>(`/sales/${saleId}/void`);
+
+  return response.data;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Refund Sale - Manager/Admin Direct Action
+|--------------------------------------------------------------------------
+*/
+
+export async function refundSale(
+  saleId: number,
+  items: {
+    sale_item_id: number;
+    quantity: number;
+  }[],
+): Promise<SaleResponse> {
+  const response = await api.post<SaleResponse>(`/sales/${saleId}/refund`, {
+    items,
+  });
+
+  return response.data;
+}
