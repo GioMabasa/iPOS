@@ -93,11 +93,16 @@ export async function createVoidRequest(
 export async function createRefundRequest(
   saleId: number,
   reason: string,
+  items: {
+    sale_item_id: number;
+    quantity: number;
+  }[],
 ): Promise<SaleActionRequest> {
   const response = await api.post(
     `/sales/${saleId}/refund-request`,
     {
       reason,
+      items,
     },
   );
 

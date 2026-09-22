@@ -252,6 +252,19 @@ class SaleController extends Controller
             'customer_id' => [
                 'nullable',
                 'exists:customers,id',
+                'required_if:payment_method,charge',
+            ],
+
+            'payment_method' => [
+                'required',
+                'in:cash,charge',
+            ],
+
+            'term_months' => [
+                'nullable',
+                'integer',
+                'in:1,2,3,4,5,6,9,12',
+                'required_if:payment_method,charge',
             ],
 
             'sale_date' => [
@@ -272,7 +285,7 @@ class SaleController extends Controller
             ],
 
             'amount_paid' => [
-                'required',
+                'nullable',
                 'numeric',
                 'gte:0',
             ],
@@ -379,19 +392,44 @@ class SaleController extends Controller
                 ]);
             }
 
-            $amountPaid =
-                (float) $validated['amount_paid'];
+            $paymentMethod =
+                $validated['payment_method'];
 
-            if ($amountPaid < $total) {
-                throw ValidationException::withMessages([
-                    'amount_paid' => [
-                        "Insufficient payment. Total is {$total}, paid {$amountPaid}.",
-                    ],
-                ]);
+            $amountPaid = 0.0;
+            $changeAmount = 0.0;
+            $termMonths = null;
+            $dueDate = null;
+
+            if ($paymentMethod === 'cash') {
+
+                $amountPaid =
+                    (float) (
+                        $validated['amount_paid']
+                        ?? 0
+                    );
+
+                if ($amountPaid < $total) {
+                    throw ValidationException::withMessages([
+                        'amount_paid' => [
+                            "Insufficient payment. Total is {$total}, paid {$amountPaid}.",
+                        ],
+                    ]);
+                }
+
+                $changeAmount =
+                    $amountPaid - $total;
+            } elseif ($paymentMethod === 'charge') {
+
+                $termMonths =
+                    (int) $validated['term_months'];
+
+                $dueDate =
+                    \Carbon\Carbon::parse(
+                        $validated['sale_date']
+                    )->addMonths(
+                        $termMonths
+                    )->toDateString();
             }
-
-            $changeAmount =
-                $amountPaid - $total;
 
             $userId =
                 Auth::id() ?? 1;
@@ -424,6 +462,15 @@ class SaleController extends Controller
 
                 'total' =>
                 $total,
+
+                'payment_method' =>
+                $paymentMethod,
+
+                'term_months' =>
+                $termMonths,
+
+                'due_date' =>
+                $dueDate,
 
                 'amount_paid' =>
                 $amountPaid,
@@ -542,12 +589,23 @@ class SaleController extends Controller
 
             foreach ($sale->items as $item) {
 
+                $refundedQuantity = (float) $item->refunded_quantity;
+
+                $remainingQuantity =
+                    (float) $item->quantity
+                    - $refundedQuantity;
+
+                if ($remainingQuantity <= 0) {
+                    continue;
+                }
+
                 /*
-                 * Restore inventory quantity.
-                 */
+                * Restore only the quantity that has not
+                * already been refunded.
+                */
                 $inventoryService->restoreStock(
                     $item->product,
-                    (float) $item->quantity,
+                    $remainingQuantity,
                     'sale_void',
                     $sale->id,
                     Auth::id(),
@@ -555,10 +613,11 @@ class SaleController extends Controller
                 );
 
                 /*
-                 * Reverse FIFO COGS allocation.
-                 */
+                * Reverse only the remaining FIFO COGS.
+                */
                 $inventoryCostService->reverseFIFO(
-                    $item
+                    $item,
+                    $remainingQuantity
                 );
             }
 
@@ -582,13 +641,33 @@ class SaleController extends Controller
     }
 
     /**
-     * Refund completed sale.
+     * Refund selected items from a completed sale.
      */
     public function refund(
+        Request $request,
         Sale $sale,
         InventoryService $inventoryService,
         InventoryCostService $inventoryCostService
     ): JsonResponse {
+
+        $validated = $request->validate([
+            'items' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'items.*.sale_item_id' => [
+                'required',
+                'integer',
+            ],
+
+            'items.*.quantity' => [
+                'required',
+                'numeric',
+                'gt:0',
+            ],
+        ]);
 
         if ($sale->status !== 'completed') {
             return response()->json([
@@ -598,6 +677,7 @@ class SaleController extends Controller
         }
 
         DB::transaction(function () use (
+            $validated,
             $sale,
             $inventoryService,
             $inventoryCostService
@@ -608,18 +688,50 @@ class SaleController extends Controller
                 'items.costs',
             ]);
 
-            foreach ($sale->items as $item) {
+            foreach ($validated['items'] as $refundItem) {
+
+                $saleItem = $sale->items
+                    ->firstWhere(
+                        'id',
+                        (int) $refundItem['sale_item_id']
+                    );
+
+                if (!$saleItem) {
+                    throw ValidationException::withMessages([
+                        'items' => [
+                            "Sale item {$refundItem['sale_item_id']} does not belong to this sale.",
+                        ],
+                    ]);
+                }
+
+                $refundQuantity =
+                    (float) $refundItem['quantity'];
+
+                $soldQuantity =
+                    (float) $saleItem->quantity;
+
+                $alreadyRefunded =
+                    (float) $saleItem->refunded_quantity;
+
+                $remainingRefundable =
+                    $soldQuantity
+                    - $alreadyRefunded;
+
+                if ($refundQuantity > $remainingRefundable) {
+                    throw ValidationException::withMessages([
+                        'items' => [
+                            "Refund quantity for sale item {$saleItem->id} exceeds the remaining refundable quantity.",
+                        ],
+                    ]);
+                }
 
                 /*
-                 * Return item to inventory.
-                 *
-                 * IMPORTANT:
-                 * Refund quantity is added back as inventory.
-                 */
+             * Return selected quantity to inventory.
+             */
                 $inventoryService->refundStock(
-                    $item->product,
-                    (float) $item->quantity,
-                    (float) $item->unit_price,
+                    $saleItem->product,
+                    $refundQuantity,
+                    (float) $saleItem->unit_price,
                     'sale_refund',
                     $sale->id,
                     Auth::id(),
@@ -627,21 +739,46 @@ class SaleController extends Controller
                 );
 
                 /*
-                 * Reverse original FIFO COGS.
-                 */
+             * Reverse only the refunded quantity
+             * from the original FIFO allocation.
+             */
                 $inventoryCostService->reverseFIFO(
-                    $item
+                    $saleItem,
+                    $refundQuantity
+                );
+
+                /*
+             * Track refunded quantity.
+             */
+                $saleItem->increment(
+                    'refunded_quantity',
+                    $refundQuantity
                 );
             }
 
-            $sale->update([
-                'status' => 'refunded',
-            ]);
+            /*
+         * Mark the entire sale as refunded only when
+         * every sale item has been fully refunded.
+         */
+            $sale->refresh();
+
+            $fullyRefunded = $sale->items()
+                ->get()
+                ->every(function ($item) {
+                    return (float) $item->refunded_quantity
+                        >= (float) $item->quantity;
+                });
+
+            if ($fullyRefunded) {
+                $sale->update([
+                    'status' => 'refunded',
+                ]);
+            }
         });
 
         return response()->json([
             'message' =>
-            'Sale refunded successfully.',
+            'Sale refund processed successfully.',
 
             'data' =>
             $sale->fresh()->load([
@@ -731,42 +868,114 @@ class SaleController extends Controller
     }
 
     /**
-     * Request a sale refund.
+     * Request a sale item refund.
      */
-    public function refundRequest(Request $request, Sale $sale)
-    {
+    public function refundRequest(
+        Request $request,
+        Sale $sale
+    ) {
         $validated = $request->validate([
-            'reason' => ['required', 'string', 'max:1000'],
+            'reason' => [
+                'required',
+                'string',
+                'max:1000',
+            ],
+
+            'items' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'items.*.sale_item_id' => [
+                'required',
+                'integer',
+            ],
+
+            'items.*.quantity' => [
+                'required',
+                'numeric',
+                'gt:0',
+            ],
         ]);
 
         if ($sale->status !== 'completed') {
             return response()->json([
-                'message' => 'Only completed sales can be requested for refund.',
+                'message' =>
+                'Only completed sales can be requested for refund.',
             ], 422);
         }
 
-        $pendingRequest = SaleActionRequest::where('sale_id', $sale->id)
+        $sale->load('items');
+
+        foreach ($validated['items'] as $refundItem) {
+
+            $saleItem = $sale->items
+                ->firstWhere(
+                    'id',
+                    (int) $refundItem['sale_item_id']
+                );
+
+            if (!$saleItem) {
+                return response()->json([
+                    'message' =>
+                    "Sale item {$refundItem['sale_item_id']} does not belong to this sale.",
+                ], 422);
+            }
+
+            $remainingRefundable =
+                (float) $saleItem->quantity
+                - (float) $saleItem->refunded_quantity;
+
+            if ((float) $refundItem['quantity'] > $remainingRefundable) {
+                return response()->json([
+                    'message' =>
+                    "Refund quantity for sale item {$saleItem->id} exceeds the remaining refundable quantity.",
+                ], 422);
+            }
+        }
+
+        $pendingRequest = SaleActionRequest::where(
+            'sale_id',
+            $sale->id
+        )
             ->where('action_type', 'refund')
             ->where('status', 'pending')
             ->first();
 
         if ($pendingRequest) {
             return response()->json([
-                'message' => 'A pending refund request already exists for this sale.',
+                'message' =>
+                'A pending refund request already exists for this sale.',
             ], 422);
         }
 
         $actionRequest = SaleActionRequest::create([
-            'sale_id' => $sale->id,
-            'requested_by' => $request->user()->id,
-            'action_type' => 'refund',
-            'reason' => $validated['reason'],
-            'status' => 'pending',
+            'sale_id' =>
+            $sale->id,
+
+            'requested_by' =>
+            $request->user()->id,
+
+            'action_type' =>
+            'refund',
+
+            'reason' =>
+            $validated['reason'],
+
+            'refund_items' =>
+            $validated['items'],
+
+            'status' =>
+            'pending',
         ]);
 
         return response()->json([
-            'message' => 'Refund request submitted successfully.',
-            'data' => $actionRequest->load([
+            'message' =>
+            'Refund request submitted successfully.',
+
+            'data' =>
+            $actionRequest->load([
                 'sale',
                 'requester',
             ]),
@@ -866,48 +1075,121 @@ class SaleController extends Controller
             /*
          * Execute the requested action.
              */
-            foreach ($sale->items as $item) {
+            if ($actionRequest->action_type === 'void') {
 
-                if ($actionRequest->action_type === 'void') {
+                foreach ($sale->items as $item) {
 
-                    /*
-                 * Restore inventory quantity.
-                     */
+                    $refundedQuantity =
+                        (float) $item->refunded_quantity;
+
+                    $remainingQuantity =
+                        (float) $item->quantity
+                        - $refundedQuantity;
+
+                    if ($remainingQuantity <= 0) {
+                        continue;
+                    }
+
                     $inventoryService->restoreStock(
                         $item->product,
-                        (float) $item->quantity,
+                        $remainingQuantity,
                         'sale_void',
                         $sale->id,
                         $request->user()->id,
                         "Void sale {$sale->sale_number}"
                     );
-                } elseif ($actionRequest->action_type === 'refund') {
 
-                    /*
-                 * Return inventory quantity.
-                     */
+                    $inventoryCostService->reverseFIFO(
+                        $item,
+                        $remainingQuantity
+                    );
+                }
+
+                $sale->update([
+                    'status' => 'voided',
+                ]);
+            } elseif ($actionRequest->action_type === 'refund') {
+
+                $refundItems =
+                    $actionRequest->refund_items ?? [];
+
+                foreach ($refundItems as $refundItem) {
+
+                    $saleItem = $sale->items
+                        ->firstWhere(
+                            'id',
+                            (int) $refundItem['sale_item_id']
+                        );
+
+                    if (!$saleItem) {
+                        throw ValidationException::withMessages([
+                            'items' => [
+                                "Sale item {$refundItem['sale_item_id']} does not belong to this sale.",
+                            ],
+                        ]);
+                    }
+
+                    $refundQuantity =
+                        (float) $refundItem['quantity'];
+
+                    $remainingRefundable =
+                        (float) $saleItem->quantity
+                        - (float) $saleItem->refunded_quantity;
+
+                    if ($refundQuantity > $remainingRefundable) {
+                        throw ValidationException::withMessages([
+                            'items' => [
+                                "Refund quantity for sale item {$saleItem->id} exceeds the remaining refundable quantity.",
+                            ],
+                        ]);
+                    }
+
                     $inventoryService->refundStock(
-                        $item->product,
-                        (float) $item->quantity,
-                        (float) $item->unit_price,
+                        $saleItem->product,
+                        $refundQuantity,
+                        (float) $saleItem->unit_price,
                         'sale_refund',
                         $sale->id,
                         $request->user()->id,
                         "Refund sale {$sale->sale_number}"
                     );
-                } else {
 
-                    throw ValidationException::withMessages([
-                        'action_type' => [
-                            'Invalid sale action type.',
-                        ],
-                    ]);
+                    $inventoryCostService->reverseFIFO(
+                        $saleItem,
+                        $refundQuantity
+                    );
+
+                    $saleItem->increment(
+                        'refunded_quantity',
+                        $refundQuantity
+                    );
                 }
 
                 /*
-             * Reverse original FIFO COGS allocation.
-                 */
-                $inventoryCostService->reverseFIFO($item);
+                * The sale becomes "refunded" only when
+                * all items have been fully refunded.
+                */
+                $sale->refresh();
+
+                $fullyRefunded = $sale->items()
+                    ->get()
+                    ->every(function ($item) {
+                        return (float) $item->refunded_quantity
+                            >= (float) $item->quantity;
+                    });
+
+                if ($fullyRefunded) {
+                    $sale->update([
+                        'status' => 'refunded',
+                    ]);
+                }
+            } else {
+
+                throw ValidationException::withMessages([
+                    'action_type' => [
+                        'Invalid sale action type.',
+                    ],
+                ]);
             }
 
             /*

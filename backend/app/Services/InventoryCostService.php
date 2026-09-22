@@ -115,12 +115,22 @@ class InventoryCostService
      * Reverse FIFO cost allocation.
      *
      * Used for VOID and REFUND.
+     *
+     * When $quantity is null, the full remaining
+     * quantity of the sale item is reversed.
      */
     public function reverseFIFO(
-        SaleItem $saleItem
+        SaleItem $saleItem,
+        ?float $quantity = null
     ): float {
-        return DB::transaction(function () use ($saleItem) {
-            $remainingQuantity = (float) $saleItem->quantity;
+        return DB::transaction(function () use (
+            $saleItem,
+            $quantity
+        ) {
+            $remainingQuantity = $quantity === null
+                ? (float) $saleItem->quantity
+                : (float) $quantity;
+
             $reversedCost = 0.0;
 
             if ($remainingQuantity <= 0) {

@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\POSProductController;
+use App\Http\Controllers\Api\ReceivableController;
 
 
 /*
@@ -73,6 +74,14 @@ Route::middleware('auth:sanctum')->group(function () {
     */
 
     Route::middleware('role:admin')->group(function () {
+        /*
+        |--------------------------------------------------------------------------
+        | Receivables
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/receivables', [ReceivableController::class, 'index']);
+        Route::get('/receivables/{id}', [ReceivableController::class, 'show']);
+        Route::post('/receivables/{id}/payments', [ReceivableController::class, 'storePayment']);
 
         /*
         |--------------------------------------------------------------------------

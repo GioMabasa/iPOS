@@ -12,6 +12,7 @@ class SaleItem extends Model
         'sale_id',
         'product_id',
         'quantity',
+        'refunded_quantity',
         'unit_price',
         'discount',
         'total',
@@ -19,6 +20,7 @@ class SaleItem extends Model
 
     protected $casts = [
         'quantity' => 'decimal:3',
+        'refunded_quantity' => 'decimal:3',
         'unit_price' => 'decimal:2',
         'discount' => 'decimal:2',
         'total' => 'decimal:2',
@@ -56,12 +58,6 @@ class SaleItem extends Model
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Total FIFO cost allocated to this sale item.
-     *
-     * We calculate this directly from sale_item_costs
-     * so it does not depend on the relationship being loaded.
-     */
     public function getTotalCostAttribute(): float
     {
         return round(
@@ -77,9 +73,6 @@ class SaleItem extends Model
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Gross profit for this sale item.
-     */
     public function getGrossProfitAttribute(): float
     {
         return round(

@@ -2,16 +2,32 @@ import type { Sale } from "./sale";
 
 export interface SaleActionRequest {
   id: number;
+
   sale_id: number;
+
   requested_by: number;
+
   action_type: "void" | "refund";
+
   reason: string;
+
+  refund_items: {
+    sale_item_id: number;
+    quantity: number;
+  }[] | null;
+
   status: "pending" | "approved" | "rejected";
+
   approved_by: number | null;
+
   approved_at: string | null;
+
   rejected_at: string | null;
+
   approval_reason: string | null;
+
   created_at: string;
+
   updated_at: string;
 
   sale: Sale;

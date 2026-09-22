@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Sale, SaleItem } from "../types/sale";
 import { getSales } from "../services/saleService";
 import { getUsers } from "../services/userService";
@@ -77,6 +77,17 @@ export default function Sales() {
   const [requestLoading, setRequestLoading] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [requestSuccess, setRequestSuccess] = useState("");
+
+  const [refundQuantities, setRefundQuantities] = useState<
+    Record<number, number>
+  >({});
+
+  // Auto-highlight the entire field value when focused.
+  const selectAllOnFocus = (
+    event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    event.currentTarget.select();
+  };
 
   const getDateRange = () => {
     if (datePreset === "all") {
@@ -382,6 +393,18 @@ export default function Sales() {
     setRequestReason("");
     setRequestError("");
     setRequestSuccess("");
+
+    if (action === "refund" && selectedSale) {
+      const quantities: Record<number, number> = {};
+
+      selectedSale.items.forEach((item) => {
+        quantities[item.id] = 0;
+      });
+
+      setRefundQuantities(quantities);
+    } else {
+      setRefundQuantities({});
+    }
   };
 
   const closeRequestModal = () => {
@@ -393,6 +416,7 @@ export default function Sales() {
     setRequestReason("");
     setRequestError("");
     setRequestSuccess("");
+    setRefundQuantities({});
   };
 
   const handleRequestSubmit = async () => {
@@ -405,19 +429,75 @@ export default function Sales() {
       return;
     }
 
+    if (requestAction === "refund") {
+      const refundItems = selectedSale.items
+        .map((item) => {
+          const requestedQuantity = Number(refundQuantities[item.id] ?? 0);
+          const refundedQuantity = Number(item.refunded_quantity ?? 0);
+          const remainingQuantity = Number(item.quantity) - refundedQuantity;
+
+          return {
+            sale_item_id: item.id,
+            quantity: Math.min(requestedQuantity, remainingQuantity),
+          };
+        })
+        .filter((item) => item.quantity > 0);
+
+      if (refundItems.length === 0) {
+        setRequestError("Please select at least one item to refund.");
+        return;
+      }
+
+      try {
+        setRequestLoading(true);
+        setRequestError("");
+        setRequestSuccess("");
+
+        await createRefundRequest(
+          selectedSale.id,
+          requestReason.trim(),
+          refundItems,
+        );
+
+        setRequestSuccess(
+          "Refund request submitted successfully. Waiting for Manager/Admin approval.",
+        );
+
+        await loadSales();
+        await loadMyActionRequests();
+
+        setTimeout(() => {
+          setRequestAction(null);
+          setRequestReason("");
+          setRequestSuccess("");
+          setRefundQuantities({});
+        }, 1200);
+      } catch (err: any) {
+        console.error(err);
+
+        const message =
+          err?.response?.data?.message ??
+          err?.response?.data?.errors?.items?.[0] ??
+          err?.response?.data?.errors?.reason?.[0] ??
+          "Unable to submit refund request.";
+
+        setRequestError(message);
+      } finally {
+        setRequestLoading(false);
+      }
+
+      return;
+    }
+
     try {
       setRequestLoading(true);
       setRequestError("");
       setRequestSuccess("");
 
-      if (requestAction === "void") {
-        await createVoidRequest(selectedSale.id, requestReason.trim());
-      } else {
-        await createRefundRequest(selectedSale.id, requestReason.trim());
-      }
+      await createVoidRequest(selectedSale.id, requestReason.trim());
 
       setRequestSuccess(
-        `${requestAction === "void" ? "Void" : "Refund"} request submitted successfully. Waiting for Manager/Admin approval.`,
+        "Void request submitted successfully. Waiting for Manager/Admin approval.",
       );
 
       await loadSales();
@@ -427,6 +507,7 @@ export default function Sales() {
         setRequestAction(null);
         setRequestReason("");
         setRequestSuccess("");
+        setRefundQuantities({});
       }, 1200);
     } catch (err: any) {
       console.error(err);
@@ -434,7 +515,7 @@ export default function Sales() {
       const message =
         err?.response?.data?.message ??
         err?.response?.data?.errors?.reason?.[0] ??
-        `Unable to submit ${requestAction} request.`;
+        "Unable to submit void request.";
 
       setRequestError(message);
     } finally {
@@ -508,6 +589,7 @@ export default function Sales() {
         <input
           type="text"
           value={search}
+          onFocus={selectAllOnFocus}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
@@ -1223,7 +1305,7 @@ export default function Sales() {
       {/* Void / Refund Request Modal */}
       {selectedSale && requestAction && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
+          <div className="w-full max-w-4xl rounded-xl bg-white shadow-xl">
             <div className="border-b px-6 py-4">
               <h2 className="text-xl font-bold text-gray-800">
                 {requestAction === "void"
@@ -1266,6 +1348,126 @@ export default function Sales() {
                 </span>
               </div>
 
+              {requestAction === "refund" && (
+                <div>
+                  <div className="mb-2">
+                    <p className="text-sm font-medium text-gray-700">
+                      Items to Refund
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                      Enter the quantity to refund for each item.
+                    </p>
+                  </div>
+
+                  <div className="overflow-hidden rounded-lg border">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-3 text-left font-medium text-gray-600">
+                            Product
+                          </th>
+
+                          <th className="px-3 py-3 text-right font-medium text-gray-600">
+                            Sold
+                          </th>
+
+                          <th className="px-3 py-3 text-right font-medium text-gray-600">
+                            Refunded
+                          </th>
+
+                          <th className="px-3 py-3 text-right font-medium text-gray-600">
+                            Remaining
+                          </th>
+
+                          <th className="px-3 py-3 text-right font-medium text-gray-600">
+                            Refund Qty
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {selectedSale.items.map((item) => {
+                          const soldQuantity = Number(item.quantity);
+                          const refundedQuantity = Number(
+                            item.refunded_quantity ?? 0,
+                          );
+                          const remainingQuantity = Math.max(
+                            0,
+                            soldQuantity - refundedQuantity,
+                          );
+
+                          const refundQuantity = Number(
+                            refundQuantities[item.id] ?? 0,
+                          );
+
+                          return (
+                            <tr key={item.id} className="border-t">
+                              <td className="px-3 py-3">
+                                <div className="font-medium text-gray-800">
+                                  {item.product?.name ?? "Unknown Product"}
+                                </div>
+
+                                {item.product?.sku && (
+                                  <div className="text-xs text-gray-500">
+                                    SKU: {item.product.sku}
+                                  </div>
+                                )}
+                              </td>
+
+                              <td className="px-3 py-3 text-right">
+                                {soldQuantity}
+                              </td>
+
+                              <td className="px-3 py-3 text-right text-gray-500">
+                                {refundedQuantity}
+                              </td>
+
+                              <td className="px-3 py-3 text-right font-medium">
+                                {remainingQuantity}
+                              </td>
+
+                              <td className="px-3 py-3 text-right">
+                                {remainingQuantity > 0 ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={remainingQuantity}
+                                    step="0.001"
+                                    value={refundQuantity}
+                                    onFocus={selectAllOnFocus}
+                                    onChange={(e) => {
+                                      const value = Number(e.target.value);
+
+                                      setRefundQuantities((current) => ({
+                                        ...current,
+                                        [item.id]: Math.max(
+                                          0,
+                                          Math.min(
+                                            value || 0,
+                                            remainingQuantity,
+                                          ),
+                                        ),
+                                      }));
+                                    }}
+                                    disabled={requestLoading}
+                                    className="w-24 rounded-lg border px-3 py-2 text-right text-sm outline-none focus:border-yellow-500 disabled:bg-gray-100"
+                                  />
+                                ) : (
+                                  <span className="text-xs font-medium text-gray-400">
+                                    Fully Refunded
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
                   Reason
@@ -1274,6 +1476,7 @@ export default function Sales() {
                 <textarea
                   value={requestReason}
                   onChange={(e) => setRequestReason(e.target.value)}
+                  onFocus={selectAllOnFocus}
                   rows={4}
                   maxLength={1000}
                   placeholder="Enter reason for this request..."
@@ -1312,7 +1515,14 @@ export default function Sales() {
               <button
                 type="button"
                 onClick={handleRequestSubmit}
-                disabled={requestLoading || !requestReason.trim()}
+                disabled={
+                  requestLoading ||
+                  !requestReason.trim() ||
+                  (requestAction === "refund" &&
+                    !Object.values(refundQuantities).some(
+                      (quantity) => Number(quantity) > 0,
+                    ))
+                }
                 className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
                   requestAction === "void"
                     ? "bg-red-600 hover:bg-red-700"

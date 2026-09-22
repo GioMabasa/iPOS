@@ -526,7 +526,9 @@ export default function ApprovalRequests() {
               {/* Items */}
               <div>
                 <h3 className="mb-3 text-base font-semibold text-gray-800">
-                  Sale Items
+                  {selectedRequest.action_type === "refund"
+                    ? "Refund Items"
+                    : "Sale Items"}
                 </h3>
 
                 <div className="overflow-x-auto rounded-lg border">
@@ -537,6 +539,16 @@ export default function ApprovalRequests() {
 
                         <th className="px-4 py-3 text-right">Qty</th>
 
+                        {selectedRequest.action_type === "refund" && (
+                          <>
+                            <th className="px-4 py-3 text-right">Refunded</th>
+
+                            <th className="px-4 py-3 text-right">
+                              Requested Refund
+                            </th>
+                          </>
+                        )}
+
                         <th className="px-4 py-3 text-right">Unit Price</th>
 
                         <th className="px-4 py-3 text-right">Discount</th>
@@ -546,37 +558,55 @@ export default function ApprovalRequests() {
                     </thead>
 
                     <tbody>
-                      {selectedRequest.sale?.items?.map((item) => (
-                        <tr key={item.id} className="border-t">
-                          <td className="px-4 py-3">
-                            <div className="font-medium">
-                              {item.product?.name ?? "Unknown Product"}
-                            </div>
+                      {selectedRequest.sale?.items?.map((item) => {
+                        const refundItem = selectedRequest.refund_items?.find(
+                          (refund) => refund.sale_item_id === item.id,
+                        );
 
-                            {item.product?.sku && (
-                              <div className="text-xs text-gray-500">
-                                SKU: {item.product.sku}
+                        return (
+                          <tr key={item.id} className="border-t">
+                            <td className="px-4 py-3">
+                              <div className="font-medium">
+                                {item.product?.name ?? "Unknown Product"}
                               </div>
+
+                              {item.product?.sku && (
+                                <div className="text-xs text-gray-500">
+                                  SKU: {item.product.sku}
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              {Number(item.quantity)}
+                            </td>
+
+                            {selectedRequest.action_type === "refund" && (
+                              <>
+                                <td className="px-4 py-3 text-right">
+                                  {Number(item.refunded_quantity ?? 0)}
+                                </td>
+
+                                <td className="px-4 py-3 text-right font-semibold text-yellow-700">
+                                  {Number(refundItem?.quantity ?? 0)}
+                                </td>
+                              </>
                             )}
-                          </td>
 
-                          <td className="px-4 py-3 text-right">
-                            {Number(item.quantity)}
-                          </td>
+                            <td className="px-4 py-3 text-right">
+                              {formatCurrency(item.unit_price)}
+                            </td>
 
-                          <td className="px-4 py-3 text-right">
-                            {formatCurrency(item.unit_price)}
-                          </td>
+                            <td className="px-4 py-3 text-right">
+                              {formatCurrency(item.discount)}
+                            </td>
 
-                          <td className="px-4 py-3 text-right">
-                            {formatCurrency(item.discount)}
-                          </td>
-
-                          <td className="px-4 py-3 text-right font-medium">
-                            {formatCurrency(item.total)}
-                          </td>
-                        </tr>
-                      ))}
+                            <td className="px-4 py-3 text-right font-medium">
+                              {formatCurrency(item.total)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

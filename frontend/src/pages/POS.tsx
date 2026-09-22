@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { getPOSProducts, type POSProduct } from "../services/inventoryService";
 import { createSale } from "../services/saleService";
+import { getCustomers } from "../services/customerService";
 
 import type { CreateSaleRequest } from "../types/sale";
+import type { Customer } from "../types/customer";
 
 /*
 |--------------------------------------------------------------------------
@@ -28,6 +30,8 @@ interface ConfirmState {
 */
 
 const PRODUCTS_PER_PAGE = 9;
+
+const TERM_OPTIONS = [1, 2, 3, 4, 5, 6, 9, 12];
 
 /*
 |--------------------------------------------------------------------------
@@ -60,6 +64,28 @@ function getToday(): string {
   const day = String(today.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function getDueDate(termMonths: number): string {
+  const date = new Date();
+
+  date.setHours(12, 0, 0, 0);
+
+  date.setMonth(date.getMonth() + termMonths);
+
+  const year = date.getFullYear();
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDate(dateString: string): string {
+  const [year, month, day] = dateString.split("-");
+
+  return `${month}/${day}/${year}`;
 }
 
 /*
@@ -125,14 +151,28 @@ export default function POS() {
 
   const [notes, setNotes] = useState("");
 
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "charge">("cash");
+
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  const [customerLoading, setCustomerLoading] = useState(false);
+
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(
+    null,
+  );
+
+  const [termMonths, setTermMonths] = useState<number | null>(null);
+
   useEffect(() => {
     if (showPaymentModal) {
       setTimeout(() => {
-        amountPaidInputRef.current?.focus();
-        amountPaidInputRef.current?.select();
+        if (paymentMethod === "cash") {
+          amountPaidInputRef.current?.focus();
+          amountPaidInputRef.current?.select();
+        }
       }, 100);
     }
-  }, [showPaymentModal]);
+  }, [showPaymentModal, paymentMethod]);
 
   /*
   |--------------------------------------------------------------------------
@@ -141,6 +181,7 @@ export default function POS() {
   */
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+
   const amountPaidInputRef = useRef<HTMLInputElement>(null);
 
   /*
@@ -184,6 +225,28 @@ export default function POS() {
       } else {
         setFetching(false);
       }
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Load Customers
+  |--------------------------------------------------------------------------
+  */
+
+  async function loadCustomers() {
+    try {
+      setCustomerLoading(true);
+
+      const response = await getCustomers();
+
+      setCustomers(response);
+    } catch (err) {
+      console.error("Customer loading error:", err);
+
+      setError("Unable to load customers.");
+    } finally {
+      setCustomerLoading(false);
     }
   }
 
@@ -479,9 +542,17 @@ export default function POS() {
 
   const numericAmountPaid = toNumber(amountPaid);
 
-  const changeAmount = Math.max(numericAmountPaid - total, 0);
+  const changeAmount =
+    paymentMethod === "cash" ? Math.max(numericAmountPaid - total, 0) : 0;
 
-  const insufficientPayment = numericAmountPaid < total;
+  const insufficientPayment =
+    paymentMethod === "cash" && numericAmountPaid < total;
+
+  const selectedCustomer =
+    customers.find((customer) => customer.id === selectedCustomerId) ?? null;
+
+  const dueDate =
+    paymentMethod === "charge" && termMonths ? getDueDate(termMonths) : null;
 
   /*
   |--------------------------------------------------------------------------
@@ -500,7 +571,15 @@ export default function POS() {
 
     setNotes("");
 
+    setPaymentMethod("cash");
+
+    setSelectedCustomerId(null);
+
+    setTermMonths(null);
+
     setShowPaymentModal(true);
+
+    void loadCustomers();
   }
 
   /*
@@ -556,23 +635,45 @@ export default function POS() {
       return;
     }
 
-    if (numericAmountPaid < total) {
-      setError("Amount paid is insufficient.");
+    if (paymentMethod === "cash") {
+      if (numericAmountPaid < total) {
+        setError("Amount paid is insufficient.");
 
-      return;
+        return;
+      }
+    }
+
+    if (paymentMethod === "charge") {
+      if (!selectedCustomerId) {
+        setError("Please select a customer for charge payment.");
+
+        return;
+      }
+
+      if (!termMonths) {
+        setError("Please select a payment term.");
+
+        return;
+      }
     }
 
     try {
       setSubmitting(true);
 
       const payload: CreateSaleRequest = {
+        customer_id: selectedCustomerId,
+
+        payment_method: paymentMethod,
+
+        term_months: paymentMethod === "charge" ? termMonths : null,
+
         sale_date: getToday(),
 
         discount: 0,
 
         tax: 0,
 
-        amount_paid: numericAmountPaid,
+        amount_paid: paymentMethod === "cash" ? numericAmountPaid : 0,
 
         notes: notes.trim() || null,
 
@@ -594,6 +695,12 @@ export default function POS() {
       setAmountPaid("");
 
       setNotes("");
+
+      setPaymentMethod("cash");
+
+      setSelectedCustomerId(null);
+
+      setTermMonths(null);
 
       setSuccessMessage("Sale completed successfully!");
 
@@ -637,7 +744,14 @@ export default function POS() {
 
       event.preventDefault();
 
-      if (!submitting && !insufficientPayment && amountPaid) {
+      const canComplete =
+        !submitting &&
+        !insufficientPayment &&
+        (paymentMethod === "charge"
+          ? Boolean(selectedCustomerId && termMonths)
+          : Boolean(amountPaid));
+
+      if (canComplete) {
         handleCompleteSale();
       }
     }
@@ -647,7 +761,15 @@ export default function POS() {
     return () => {
       window.removeEventListener("keydown", handleCompleteSaleShortcut);
     };
-  }, [showPaymentModal, submitting, insufficientPayment, amountPaid]);
+  }, [
+    showPaymentModal,
+    submitting,
+    insufficientPayment,
+    amountPaid,
+    paymentMethod,
+    selectedCustomerId,
+    termMonths,
+  ]);
 
   /*
   |--------------------------------------------------------------------------
@@ -957,7 +1079,7 @@ export default function POS() {
             CART
         ====================================================== */}
 
-        <section className="flex max-h-[calc(100vh-140px)] flex-col rounded-xl border border-gray-200 bg-white shadow-sm">
+        <section className="flex h-[calc(100vh-240px)] flex-col rounded-xl border border-gray-200 bg-white shadow-sm">
           {/* CART HEADER */}
 
           <div className="flex items-center justify-between border-b border-gray-200 p-4">
@@ -1032,19 +1154,6 @@ export default function POS() {
                           </p>
 
                           <p className="mt-1 text-xs text-gray-500">
-                            Barcode:{" "}
-                            {item.product.barcode ? (
-                              <span className="font-mono font-medium text-gray-700">
-                                {item.product.barcode}
-                              </span>
-                            ) : (
-                              <span className="italic text-gray-400">
-                                No barcode
-                              </span>
-                            )}
-                          </p>
-
-                          <p className="mt-1 text-xs text-gray-500">
                             {formatCurrency(item.product.selling_price)} each
                           </p>
                         </div>
@@ -1101,6 +1210,7 @@ export default function POS() {
                                 Number(value),
                               );
                             }}
+                            onFocus={(event) => event.target.select()}
                             className="h-9 w-14 border-x border-gray-300 text-center text-sm font-semibold outline-none"
                           />
 
@@ -1148,7 +1258,7 @@ export default function POS() {
 
           {/* TOTAL */}
 
-          <div className="border-t border-gray-200 p-4">
+          <div className="shrink-0 border-t border-gray-200 bg-white p-4">
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Subtotal</span>
@@ -1238,10 +1348,10 @@ export default function POS() {
 
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-xl bg-white shadow-xl">
             {/* HEADER */}
 
-            <div className="flex items-center justify-between border-b border-gray-200 p-5">
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-200 p-5">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Payment</h3>
 
@@ -1262,7 +1372,7 @@ export default function POS() {
 
             {/* CONTENT */}
 
-            <div className="p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
               {/* TOTAL */}
 
               <div className="rounded-lg bg-indigo-50 p-4">
@@ -1273,35 +1383,217 @@ export default function POS() {
                 </p>
               </div>
 
-              {/* AMOUNT PAID */}
+              {/* PAYMENT METHOD */}
 
               <div className="mt-5">
                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Amount Paid
+                  Payment Method
                 </label>
 
-                <input
-                  ref={amountPaidInputRef}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={amountPaid}
-                  onChange={(event) => setAmountPaid(event.target.value)}
-                  onFocus={(event) => event.target.select()}
-                  disabled={submitting}
-                  className="h-11 w-full rounded-lg border border-gray-300 px-4 text-lg font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod("cash");
+                      setError("");
+                    }}
+                    disabled={submitting}
+                    className={`h-11 rounded-lg border text-sm font-semibold transition ${
+                      paymentMethod === "cash"
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    Cash
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod("charge");
+                      setAmountPaid("0");
+                      setError("");
+                    }}
+                    disabled={submitting}
+                    className={`h-11 rounded-lg border text-sm font-semibold transition ${
+                      paymentMethod === "charge"
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    Charge
+                  </button>
+                </div>
               </div>
+
+              {/* CUSTOMER */}
+
+              <div className="mt-5">
+                <label
+                  htmlFor="sale-customer"
+                  className="mb-2 block text-sm font-medium text-gray-700"
+                >
+                  Customer
+                  {paymentMethod === "charge" && (
+                    <span className="ml-1 text-red-500">*</span>
+                  )}
+                </label>
+
+                <select
+                  id="sale-customer"
+                  value={selectedCustomerId ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+
+                    setSelectedCustomerId(value ? Number(value) : null);
+
+                    setError("");
+                  }}
+                  disabled={submitting || customerLoading}
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                >
+                  <option value="">Walk-in Customer</option>
+
+                  {customers
+                    .filter((customer) => customer.is_active)
+                    .map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name}
+                        {customer.business_type
+                          ? ` - ${customer.business_type}`
+                          : ""}
+                      </option>
+                    ))}
+                </select>
+
+                {customerLoading && (
+                  <p className="mt-1 text-xs text-gray-400">
+                    Loading customers...
+                  </p>
+                )}
+
+                {paymentMethod === "charge" && !selectedCustomer && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    A customer is required for charge payment.
+                  </p>
+                )}
+              </div>
+
+              {/* TERM */}
+
+              {paymentMethod === "charge" && (
+                <>
+                  <div className="mt-5">
+                    <label
+                      htmlFor="sale-term"
+                      className="mb-2 block text-sm font-medium text-gray-700"
+                    >
+                      Payment Term
+                      <span className="ml-1 text-red-500">*</span>
+                    </label>
+
+                    <select
+                      id="sale-term"
+                      value={termMonths ?? ""}
+                      onChange={(event) => {
+                        const value = event.target.value;
+
+                        setTermMonths(value ? Number(value) : null);
+
+                        setError("");
+                      }}
+                      disabled={submitting}
+                      className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      <option value="">Select term</option>
+
+                      {TERM_OPTIONS.map((months) => (
+                        <option key={months} value={months}>
+                          {months} {months === 1 ? "Month" : "Months"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* DUE DATE */}
+
+                  {dueDate && (
+                    <div className="mt-4 flex justify-between rounded-lg bg-gray-50 p-3">
+                      <span className="text-sm text-gray-600">Due Date</span>
+
+                      <span className="font-bold text-gray-900">
+                        {formatDate(dueDate)}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* AMOUNT PAID */}
+
+              {paymentMethod === "cash" && (
+                <div className="mt-5">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Amount Paid
+                  </label>
+
+                  <input
+                    ref={amountPaidInputRef}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={amountPaid}
+                    onChange={(event) => setAmountPaid(event.target.value)}
+                    onFocus={(event) => event.target.select()}
+                    disabled={submitting}
+                    className="h-11 w-full rounded-lg border border-gray-300 px-4 text-lg font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </div>
+              )}
 
               {/* CHANGE */}
 
-              <div className="mt-4 flex justify-between rounded-lg bg-gray-50 p-3">
-                <span className="text-sm text-gray-600">Change</span>
+              {paymentMethod === "cash" && (
+                <div className="mt-4 flex justify-between rounded-lg bg-gray-50 p-3">
+                  <span className="text-sm text-gray-600">Change</span>
 
-                <span className="font-bold text-gray-900">
-                  {formatCurrency(changeAmount)}
-                </span>
-              </div>
+                  <span className="font-bold text-gray-900">
+                    {formatCurrency(changeAmount)}
+                  </span>
+                </div>
+              )}
+
+              {/* CHARGE INFORMATION */}
+
+              {paymentMethod === "charge" && selectedCustomer && termMonths && (
+                <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-indigo-600">Customer</span>
+
+                    <span className="font-semibold text-indigo-900">
+                      {selectedCustomer.name}
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex justify-between text-sm">
+                    <span className="text-indigo-600">Term</span>
+
+                    <span className="font-semibold text-indigo-900">
+                      {termMonths} {termMonths === 1 ? "Month" : "Months"}
+                    </span>
+                  </div>
+
+                  {dueDate && (
+                    <div className="mt-1 flex justify-between text-sm">
+                      <span className="text-indigo-600">Due Date</span>
+
+                      <span className="font-semibold text-indigo-900">
+                        {formatDate(dueDate)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* NOTES */}
 
@@ -1323,16 +1615,28 @@ export default function POS() {
 
               {/* INSUFFICIENT */}
 
-              {amountPaid && insufficientPayment && (
-                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                  Amount paid is insufficient.
-                </div>
-              )}
+              {paymentMethod === "cash" &&
+                amountPaid &&
+                insufficientPayment && (
+                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    Amount paid is insufficient.
+                  </div>
+                )}
+
+              {/* CHARGE VALIDATION */}
+
+              {paymentMethod === "charge" &&
+                (!selectedCustomerId || !termMonths) && (
+                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    Select a customer and payment term before completing the
+                    sale.
+                  </div>
+                )}
             </div>
 
             {/* FOOTER */}
 
-            <div className="flex gap-3 border-t border-gray-200 p-5">
+            <div className="flex shrink-0 gap-3 border-t border-gray-200 bg-white p-5">
               <button
                 type="button"
                 onClick={closePaymentModal}
@@ -1345,7 +1649,13 @@ export default function POS() {
               <button
                 type="button"
                 onClick={handleCompleteSale}
-                disabled={submitting || insufficientPayment || !amountPaid}
+                disabled={
+                  submitting ||
+                  insufficientPayment ||
+                  (paymentMethod === "cash" && !amountPaid) ||
+                  (paymentMethod === "charge" &&
+                    (!selectedCustomerId || !termMonths))
+                }
                 className="h-11 flex-1 rounded-lg bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? "Processing..." : "Complete Sale"}

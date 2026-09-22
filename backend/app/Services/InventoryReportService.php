@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\InventoryTransaction;
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class InventoryReportService
@@ -34,21 +35,41 @@ class InventoryReportService
             ->orderBy('created_at')
             ->orderBy('id');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Manila Timezone Date Range
+        |--------------------------------------------------------------------------
+        */
+
         if ($from !== null) {
 
-            $query->whereDate(
+            $fromDate = Carbon::parse(
+                $from,
+                'Asia/Manila'
+            )
+                ->startOfDay()
+                ->utc();
+
+            $query->where(
                 'created_at',
                 '>=',
-                $from
+                $fromDate
             );
         }
 
         if ($to !== null) {
 
-            $query->whereDate(
+            $toDate = Carbon::parse(
+                $to,
+                'Asia/Manila'
+            )
+                ->endOfDay()
+                ->utc();
+
+            $query->where(
                 'created_at',
                 '<=',
-                $to
+                $toDate
             );
         }
 
@@ -68,6 +89,7 @@ class InventoryReportService
                     'date' =>
                     $transaction->created_at
                         ? $transaction->created_at
+                        ->setTimezone('Asia/Manila')
                         ->format('Y-m-d H:i:s')
                         : null,
 
@@ -138,10 +160,17 @@ class InventoryReportService
                 $from !== null,
                 function ($query) use ($from) {
 
-                    $query->whereDate(
+                    $fromDate = Carbon::parse(
+                        $from,
+                        'Asia/Manila'
+                    )
+                        ->startOfDay()
+                        ->utc();
+
+                    $query->where(
                         'created_at',
                         '>=',
-                        $from
+                        $fromDate
                     );
                 }
             )
@@ -149,10 +178,17 @@ class InventoryReportService
                 $to !== null,
                 function ($query) use ($to) {
 
-                    $query->whereDate(
+                    $toDate = Carbon::parse(
+                        $to,
+                        'Asia/Manila'
+                    )
+                        ->endOfDay()
+                        ->utc();
+
+                    $query->where(
                         'created_at',
                         '<=',
-                        $to
+                        $toDate
                     );
                 }
             )

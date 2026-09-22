@@ -34,6 +34,11 @@ class CustomerController extends Controller
                 'string',
                 'max:255',
             ],
+            'business_type' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'phone' => [
                 'nullable',
                 'string',
@@ -87,6 +92,11 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'name' => [
                 'required',
+                'string',
+                'max:255',
+            ],
+            'business_type' => [
+                'nullable',
                 'string',
                 'max:255',
             ],

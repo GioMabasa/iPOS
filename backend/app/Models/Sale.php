@@ -18,6 +18,9 @@ class Sale extends Model
         'discount',
         'tax',
         'total',
+        'payment_method',
+        'term_months',
+        'due_date',
         'amount_paid',
         'change_amount',
         'status',
@@ -26,6 +29,8 @@ class Sale extends Model
 
     protected $casts = [
         'sale_date' => 'date',
+        'term_months' => 'integer',
+        'due_date' => 'date',
         'subtotal' => 'decimal:2',
         'discount' => 'decimal:2',
         'tax' => 'decimal:2',

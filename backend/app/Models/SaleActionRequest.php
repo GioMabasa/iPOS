@@ -15,6 +15,7 @@ class SaleActionRequest extends Model
         'requested_by',
         'action_type',
         'reason',
+        'refund_items',
         'status',
         'approved_by',
         'approved_at',
@@ -23,6 +24,7 @@ class SaleActionRequest extends Model
     ];
 
     protected $casts = [
+        'refund_items' => 'array',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
     ];

@@ -20,6 +20,7 @@ import Inventory from "../pages/Inventory";
 import Sales from "../pages/Sales";
 import Reports from "../pages/Reports";
 import Settings from "../pages/Settings";
+import Receivables from "../pages/Receivables";
 
 import ApprovalRequests from "../pages/ApprovalRequests";
 
@@ -61,19 +62,21 @@ export default function AppRoutes() {
           }
         >
           <Route path="/pos" element={<POS />} />
-          <Route path="/customers" element={<Customers />} />
+
           <Route path="/sales" element={<Sales />} />
         </Route>
 
         {/* Admin + Manager */}
         <Route element={<ProtectedRoute allowedRoles={["admin", "manager"]} />}>
           <Route path="/products" element={<Products />} />
+          <Route path="/receivables" element={<Receivables />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/suppliers" element={<Suppliers />} />
           <Route path="/purchases" element={<Purchases />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/approval-requests" element={<ApprovalRequests />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/customers" element={<Customers />} />
         </Route>
 
         {/* Admin only */}
