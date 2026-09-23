@@ -34,6 +34,7 @@ export interface SalesListResponse {
 export async function getSales(params?: {
   search?: string;
   status?: string;
+  payment_method?: "cash" | "charge";
   date_from?: string;
   date_to?: string;
   user_id?: number;
@@ -94,6 +95,41 @@ export async function refundSale(
   const response = await api.post(`/sales/${id}/refund`, {
     items,
   });
+
+  return response.data;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Export Sales
+|--------------------------------------------------------------------------
+*/
+
+export async function exportSales(
+  params: {
+    search?: string;
+    status?: string;
+    date_from?: string;
+    date_to?: string;
+    user_id?: number;
+    payment_method?: "cash" | "charge";
+  } = {},
+): Promise<Blob> {
+  const token = localStorage.getItem("ipos_token");
+
+  console.log("EXPORT TOKEN EXISTS:", !!token);
+  console.log("EXPORT TOKEN LENGTH:", token?.length);
+
+  const response = await api.get(
+    "/sales/export",
+    {
+      params,
+      responseType: "blob",
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    },
+  );
 
   return response.data;
 }

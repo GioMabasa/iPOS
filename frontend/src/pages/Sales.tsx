@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { Sale, SaleItem } from "../types/sale";
-import { getSales, voidSale, refundSale } from "../services/saleService";
+import {
+  getSales,
+  voidSale,
+  refundSale,
+  exportSales,
+} from "../services/saleService";
+
 import { getUsers } from "../services/userService";
 import {
   createVoidRequest,
@@ -40,9 +46,11 @@ export default function Sales() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exportLoading, setExportLoading] = useState(false);
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<number | "">("");
   const [users, setUsers] = useState<
     { id: number; name: string; role: string }[]
@@ -189,6 +197,10 @@ export default function Sales() {
       const response = await getSales({
         search: search.trim() || undefined,
         status: status || undefined,
+        payment_method:
+          paymentMethod === ""
+            ? undefined
+            : (paymentMethod as "cash" | "charge"),
         date_from: dateRange.date_from,
         date_to: dateRange.date_to,
         user_id: selectedUserId === "" ? undefined : Number(selectedUserId),
@@ -243,7 +255,16 @@ export default function Sales() {
 
   useEffect(() => {
     loadSales();
-  }, [page, status, selectedUserId, datePreset, dateFrom, dateTo, search]);
+  }, [
+    page,
+    status,
+    paymentMethod,
+    selectedUserId,
+    datePreset,
+    dateFrom,
+    dateTo,
+    search,
+  ]);
 
   useEffect(() => {
     if (user?.role === "admin" || user?.role === "manager") {
@@ -260,11 +281,50 @@ export default function Sales() {
   const clearFilters = () => {
     setSearch("");
     setStatus("");
+    setPaymentMethod("");
     setSelectedUserId("");
     setDatePreset("all");
     setDateFrom("");
     setDateTo("");
     setPage(1);
+  };
+
+  const handleExport = async () => {
+    try {
+      setExportLoading(true);
+      setError("");
+
+      const dateRange = getDateRange();
+
+      const blob = await exportSales({
+        search: search.trim() || undefined,
+        status: status || undefined,
+        payment_method:
+          paymentMethod === ""
+            ? undefined
+            : (paymentMethod as "cash" | "charge"),
+        date_from: dateRange.date_from,
+        date_to: dateRange.date_to,
+        user_id: selectedUserId === "" ? undefined : Number(selectedUserId),
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `sales-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      setError("Unable to export sales.");
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const handleDatePresetChange = (value: string) => {
@@ -710,6 +770,19 @@ export default function Sales() {
           <option value="voided">Voided</option>
         </select>
 
+        <select
+          value={paymentMethod}
+          onChange={(e) => {
+            setPaymentMethod(e.target.value);
+            setPage(1);
+          }}
+          className="rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
+        >
+          <option value="">All Payment Methods</option>
+          <option value="cash">Cash</option>
+          <option value="charge">Charge</option>
+        </select>
+
         {(user?.role === "admin" || user?.role === "manager") && (
           <select
             value={selectedUserId}
@@ -776,6 +849,15 @@ export default function Sales() {
           className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           Clear Filters
+        </button>
+
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={exportLoading}
+          className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {exportLoading ? "Exporting..." : "Export to Spreadsheet"}
         </button>
       </div>
 
@@ -927,6 +1009,10 @@ export default function Sales() {
                     Sold By
                   </th>
 
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600">
+                    Payment Method
+                  </th>
+
                   <th className="px-4 py-3 text-right font-semibold text-gray-600">
                     Total
                   </th>
@@ -968,6 +1054,18 @@ export default function Sales() {
 
                     <td className="px-4 py-3 text-gray-600">
                       {sale.user?.name ?? "—"}
+                    </td>
+
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                          sale.payment_method === "cash"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-orange-100 text-orange-700"
+                        }`}
+                      >
+                        {sale.payment_method === "cash" ? "Cash" : "Charge"}
+                      </span>
                     </td>
 
                     <td className="px-4 py-3 text-right font-medium">

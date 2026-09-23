@@ -339,6 +339,11 @@ Route::middleware('auth:sanctum')->group(function () {
         */
 
         Route::get(
+            '/sales/export',
+            [SaleController::class, 'export']
+        );
+
+        Route::get(
             '/sales',
             [SaleController::class, 'index']
         );

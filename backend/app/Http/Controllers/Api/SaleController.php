@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\SalesExport;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Sale;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Models\SaleActionRequest;
 
 class SaleController extends Controller
@@ -29,6 +31,11 @@ class SaleController extends Controller
             'status' => [
                 'nullable',
                 'in:completed,refunded,voided',
+            ],
+
+            'payment_method' => [
+                'nullable',
+                'in:cash,charge',
             ],
 
             'user_id' => [
@@ -103,6 +110,16 @@ class SaleController extends Controller
             $query->where(
                 'status',
                 $validated['status']
+            );
+        }
+
+        /*
+        * Payment Method filter
+        */
+        if (!empty($validated['payment_method'])) {
+            $query->where(
+                'payment_method',
+                $validated['payment_method']
             );
         }
 
@@ -223,6 +240,257 @@ class SaleController extends Controller
                 'total_refund' => $totalRefund,
             ],
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export Sales
+    |--------------------------------------------------------------------------
+    */
+
+    public function export(Request $request)
+    {
+        $validated = $request->validate([
+            'search' => [
+                'nullable',
+                'string',
+            ],
+
+            'status' => [
+                'nullable',
+                'in:completed,refunded,voided',
+            ],
+
+            'payment_method' => [
+                'nullable',
+                'in:cash,charge',
+            ],
+
+            'user_id' => [
+                'nullable',
+                'integer',
+                'exists:users,id',
+            ],
+
+            'date_from' => [
+                'nullable',
+                'date',
+            ],
+
+            'date_to' => [
+                'nullable',
+                'date',
+                'after_or_equal:date_from',
+            ],
+        ]);
+
+        /*
+        * Base query for sales.
+        */
+        $query = Sale::query();
+
+        /*
+        * Cashier can only export their own sales.
+        * Manager and Admin can export all filtered sales.
+        */
+        if ($request->user()->role === 'cashier') {
+            $query->where('user_id', $request->user()->id);
+        } elseif (!empty($validated['user_id'])) {
+            $query->where('user_id', $validated['user_id']);
+        }
+
+        /*
+        * Search
+        */
+        if (!empty($validated['search'])) {
+
+            $search = $validated['search'];
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where('sale_number', 'like', "%{$search}%")
+                    ->orWhere('invoice_number', 'like', "%{$search}%")
+
+                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                        $customerQuery->where('name', 'like', "%{$search}%");
+                    })
+
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        /*
+        * Status filter
+        */
+        if (!empty($validated['status'])) {
+            $query->where(
+                'status',
+                $validated['status']
+            );
+        }
+
+        /*
+         * Payment Method filter
+         */
+        if (!empty($validated['payment_method'])) {
+            $query->where(
+                'payment_method',
+                $validated['payment_method']
+            );
+        }
+
+        /*
+        * Date From
+        */
+        if (!empty($validated['date_from'])) {
+            $query->whereDate(
+                'sale_date',
+                '>=',
+                $validated['date_from']
+            );
+        }
+
+        /*
+        * Date To
+        */
+        if (!empty($validated['date_to'])) {
+            $query->whereDate(
+                'sale_date',
+                '<=',
+                $validated['date_to']
+            );
+        }
+
+        /*
+        * Get all matching sales.
+        *
+        * No pagination because the spreadsheet should
+        * contain all matching records.
+        */
+        $sales = $query
+            ->with([
+                'customer',
+                'user',
+                'items',
+            ])
+            ->latest('id')
+            ->get();
+
+        /*
+        * Build export data.
+        */
+        $data = $sales->map(function (Sale $sale) {
+
+            $totalItems = $sale->items->sum(
+                fn($item) => (float) $item->quantity
+            );
+
+            $cogs = $sale->items->sum(
+                fn($item) => (float) ($item->total_cost ?? 0)
+            );
+
+            $total = (float) $sale->total;
+
+            $grossProfit = $total - $cogs;
+
+            $grossMargin = $total > 0
+                ? ($grossProfit / $total) * 100
+                : 0;
+
+            $status = match ($sale->status) {
+                'completed' => 'Completed',
+                'refunded' => 'Refunded',
+                'voided' => 'Voided',
+                default => $sale->status,
+            };
+
+            return [
+                'sale_number' => $sale->sale_number,
+
+                'invoice_number' => $sale->invoice_number,
+
+                'sale_date' => $sale->sale_date,
+
+                'customer' =>
+                $sale->customer?->name
+                    ?? 'Walk-in Customer',
+
+                'cashier' =>
+                $sale->user?->name
+                    ?? '—',
+
+                'total_items' =>
+                $totalItems,
+
+                'subtotal' =>
+                (float) $sale->subtotal,
+
+                'discount' =>
+                (float) $sale->discount,
+
+                'tax' =>
+                (float) $sale->tax,
+
+                'total' =>
+                $total,
+
+                'cogs' =>
+                $cogs,
+
+                'gross_profit' =>
+                $grossProfit,
+
+                'gross_margin' =>
+                round($grossMargin, 2),
+
+                'payment_method' =>
+                ucfirst(
+                    (string) (
+                        $sale->payment_method
+                        ?? 'cash'
+                    )
+                ),
+
+                'term_months' =>
+                $sale->term_months ?? 0,
+
+                'due_date' =>
+                $sale->due_date ?? '',
+
+                'amount_paid' =>
+                (float) (
+                    $sale->amount_paid
+                    ?? 0
+                ),
+
+                'change_amount' =>
+                (float) (
+                    $sale->change_amount
+                    ?? 0
+                ),
+
+                'status' =>
+                $status,
+            ];
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Download Excel File
+        |--------------------------------------------------------------------------
+        */
+
+        return Excel::download(
+            new SalesExport(
+                $data,
+                $validated['date_from'] ?? null,
+                $validated['date_to'] ?? null,
+                $validated['payment_method'] ?? null
+            ),
+            'sales-' . now()->format('Y-m-d') . '.xlsx'
+        );
     }
 
     public function show(Sale $sale): JsonResponse
