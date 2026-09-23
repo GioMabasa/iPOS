@@ -179,3 +179,33 @@ export async function adjustInventory(data: {
   return response.data;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Export Inventory
+|--------------------------------------------------------------------------
+*/
+
+export async function exportInventory(
+  params: GetInventoryParams = {},
+): Promise<Blob> {
+  const token = localStorage.getItem("ipos_token");
+
+  console.log("EXPORT TOKEN EXISTS:", !!token);
+  console.log("EXPORT TOKEN LENGTH:", token?.length);
+
+  const response = await api.get(
+    "/inventory/export",
+    {
+      params,
+      responseType: "blob",
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    },
+  );
+
+  return response.data;
+}
+
+
+

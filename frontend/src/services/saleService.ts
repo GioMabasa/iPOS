@@ -6,12 +6,6 @@ import type {
   Sale,
 } from "../types/sale";
 
-/*
-|--------------------------------------------------------------------------
-| Get Sales
-|--------------------------------------------------------------------------
-*/
-
 export interface SalesPagination {
   current_page: number;
   last_page: number;
@@ -73,12 +67,6 @@ export async function getSales(params?: {
   };
 }
 
-/*
-|--------------------------------------------------------------------------
-| Create Sale
-|--------------------------------------------------------------------------
-*/
-
 export async function createSale(
   data: CreateSaleRequest,
 ): Promise<SaleResponse> {
@@ -90,32 +78,20 @@ export async function createSale(
   return response.data;
 }
 
-/*
-|--------------------------------------------------------------------------
-| Void Sale - Manager/Admin Direct Action
-|--------------------------------------------------------------------------
-*/
-
-export async function voidSale(saleId: number): Promise<SaleResponse> {
-  const response = await api.post<SaleResponse>(`/sales/${saleId}/void`);
+export async function voidSale(id: number) {
+  const response = await api.post(`/sales/${id}/void`);
 
   return response.data;
 }
 
-/*
-|--------------------------------------------------------------------------
-| Refund Sale - Manager/Admin Direct Action
-|--------------------------------------------------------------------------
-*/
-
 export async function refundSale(
-  saleId: number,
+  id: number,
   items: {
     sale_item_id: number;
     quantity: number;
   }[],
-): Promise<SaleResponse> {
-  const response = await api.post<SaleResponse>(`/sales/${saleId}/refund`, {
+) {
+  const response = await api.post(`/sales/${id}/refund`, {
     items,
   });
 

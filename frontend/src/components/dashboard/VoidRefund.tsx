@@ -90,15 +90,15 @@ export default function VoidRefund({ data }: VoidRefundProps) {
 
               <tbody className="divide-y divide-gray-100">
                 {data.map((item, index) => {
-                  const type = item.type === "void" ? "void" : "refund";
+                  const type = item.action;
 
-                  const amount = item.amount ?? item.total ?? 0;
+                  const amount = item.total;
 
                   const isVoid = type === "void";
 
                   return (
                     <tr
-                      key={item.id ?? item.sale_id ?? index}
+                      key={item.sale_id ?? index}
                       className="transition hover:bg-gray-50"
                     >
                       {/* TYPE */}
@@ -151,7 +151,7 @@ export default function VoidRefund({ data }: VoidRefundProps) {
 
                       <td className="px-5 py-4 text-right">
                         <span className="text-xs text-gray-500">
-                          {formatDate(item.updated_at)}
+                          {formatDate(item.action_date)}
                         </span>
                       </td>
                     </tr>

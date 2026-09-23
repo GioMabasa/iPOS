@@ -3,6 +3,7 @@ export interface InventoryProduct {
   name: string;
   sku: string;
   barcode: string | null;
+  supplier: string;
   unit: string;
   cost: number | string;
   selling_price: number | string;
@@ -46,6 +47,7 @@ export interface GetInventoryParams {
     | "all"
     | "active"
     | "inactive";
+  supplier_id?: number;
 }
 
 export interface SingleInventoryResponse {

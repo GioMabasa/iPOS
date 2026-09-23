@@ -12,7 +12,12 @@ import {
   getInventory,
   getProductTransactions,
   getInventoryHistory,
+  exportInventory,
 } from "../services/inventoryService";
+
+import { getSuppliers } from "../services/supplierService";
+
+import type { Supplier } from "../types/supplier";
 
 export default function Inventory() {
   const [inventory, setInventory] = useState<InventoryProduct[]>([]);
@@ -37,6 +42,13 @@ export default function Inventory() {
   const [productStatusFilter, setProductStatusFilter] = useState<
     "all" | "active" | "inactive"
   >("active");
+
+  const [supplierFilter, setSupplierFilter] = useState("");
+
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+
+  const [exportLoading, setExportLoading] = useState(false);
 
   const PER_PAGE = 20;
 
@@ -97,6 +109,34 @@ export default function Inventory() {
   const [adjustmentLoading, setAdjustmentLoading] = useState(false);
   const [adjustmentError, setAdjustmentError] = useState("");
 
+  /*
+  |--------------------------------------------------------------------------
+  | Load Suppliers
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      try {
+        setSuppliersLoading(true);
+
+        const response = await getSuppliers({
+          page: 1,
+          per_page: 100,
+          status: "active",
+        });
+
+        setSuppliers(response.data ?? []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setSuppliersLoading(false);
+      }
+    };
+
+    loadSuppliers();
+  }, []);
+
   const loadInventory = async (page: number = 1) => {
     try {
       setLoading(true);
@@ -108,6 +148,11 @@ export default function Inventory() {
         search,
         stock_filter: stockFilter,
         product_status: productStatusFilter,
+        ...(supplierFilter
+          ? {
+              supplier_id: Number(supplierFilter),
+            }
+          : {}),
       } as Parameters<typeof getInventory>[0]);
 
       setInventory(response.data);
@@ -141,7 +186,7 @@ export default function Inventory() {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [search, stockFilter, productStatusFilter]);
+  }, [search, stockFilter, productStatusFilter, supplierFilter]);
 
   function goToPage(page: number) {
     if (page < 1 || page > lastPage || page === currentPage || loading) {
@@ -150,6 +195,47 @@ export default function Inventory() {
 
     loadInventory(page);
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Export Inventory
+  |--------------------------------------------------------------------------
+  */
+
+  const handleExport = async () => {
+    try {
+      setExportLoading(true);
+      setError("");
+
+      const blob = await exportInventory({
+        search,
+        stock_filter: stockFilter,
+        product_status: productStatusFilter,
+        ...(supplierFilter
+          ? {
+              supplier_id: Number(supplierFilter),
+            }
+          : {}),
+      } as Parameters<typeof exportInventory>[0]);
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `inventory-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      setError("Unable to export inventory.");
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   const loadTransactions = async (productId: number, page: number = 1) => {
     try {
@@ -610,6 +696,15 @@ export default function Inventory() {
 
           <button
             type="button"
+            onClick={handleExport}
+            disabled={exportLoading}
+            className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {exportLoading ? "Exporting..." : "Export to Spreadsheet"}
+          </button>
+
+          <button
+            type="button"
             onClick={() => loadInventory(currentPage)}
             disabled={loading}
             className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -721,15 +816,34 @@ export default function Inventory() {
           <option value="all">All Products</option>
         </select>
 
+        <select
+          value={supplierFilter}
+          onChange={(e) => setSupplierFilter(e.target.value)}
+          disabled={suppliersLoading}
+          className="rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+        >
+          <option value="">
+            {suppliersLoading ? "Loading Suppliers..." : "All Suppliers"}
+          </option>
+
+          {suppliers.map((supplier) => (
+            <option key={supplier.id} value={supplier.id}>
+              {supplier.name}
+            </option>
+          ))}
+        </select>
+
         {(search ||
           stockFilter !== "all" ||
-          productStatusFilter !== "active") && (
+          productStatusFilter !== "active" ||
+          supplierFilter) && (
           <button
             type="button"
             onClick={() => {
               setSearch("");
               setStockFilter("all");
               setProductStatusFilter("active");
+              setSupplierFilter("");
             }}
             className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
@@ -771,24 +885,28 @@ export default function Inventory() {
                     Barcode
                   </th>
 
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">
-                    Unit
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
+                    Supplier
+                  </th>
+
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                    Minimum Stock
                   </th>
 
                   <th className="px-4 py-3 text-right font-semibold text-gray-600">
                     Stock
                   </th>
 
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    Minimum
-                  </th>
-
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    Cost
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600">
+                    Unit
                   </th>
 
                   <th className="px-4 py-3 text-right font-semibold text-gray-600">
                     Stock Value
+                  </th>
+
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                    Cost
                   </th>
 
                   <th className="px-4 py-3 text-right font-semibold text-gray-600">
@@ -833,24 +951,28 @@ export default function Inventory() {
                         {product.barcode || "—"}
                       </td>
 
-                      <td className="px-4 py-3 text-center text-gray-600">
-                        {product.unit}
-                      </td>
-
-                      <td className="px-4 py-3 text-right font-medium text-gray-800">
-                        {formatQuantity(product.stock)}
+                      <td className="px-4 py-3 text-gray-600">
+                        {product.supplier || "—"}
                       </td>
 
                       <td className="px-4 py-3 text-right text-gray-600">
                         {formatQuantity(product.minimum_stock)}
                       </td>
 
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {formatCurrency(product.cost)}
+                      <td className="px-4 py-3 text-right font-medium text-gray-800">
+                        {formatQuantity(product.stock)}
+                      </td>
+
+                      <td className="px-4 py-3 text-center text-gray-600">
+                        {product.unit}
                       </td>
 
                       <td className="px-4 py-3 text-right font-medium text-gray-800">
                         {formatCurrency(product.stock_value)}
+                      </td>
+
+                      <td className="px-4 py-3 text-right text-gray-600">
+                        {formatCurrency(product.cost)}
                       </td>
 
                       <td className="px-4 py-3 text-right font-medium text-gray-800">

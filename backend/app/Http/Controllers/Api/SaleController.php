@@ -1206,15 +1206,6 @@ class SaleController extends Controller
             }
 
             /*
-         * Update sale status.
-             */
-            $sale->update([
-                'status' => $actionRequest->action_type === 'void'
-                    ? 'voided'
-                    : 'refunded',
-            ]);
-
-            /*
          * Mark request as approved only after
          * the actual sale action succeeds.
              */

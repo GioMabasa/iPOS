@@ -54,15 +54,28 @@ export interface LowStockProduct {
 }
 
 export interface VoidRefund {
-    id?: number;
-    sale_id?: number;
-    sale_number?: string;
-    invoice_number?: string;
-    type?: "void" | "refund";
-    status?: string;
-    amount?: number;
-    total?: number;
-    updated_at?: string;
+    sale_id: number;
+    sale_number: string;
+    invoice_number: string | null;
+    status: "voided" | "refunded";
+    action: "void" | "refund";
+    customer: string | null;
+    user: string | null;
+    sale_date: string;
+    action_date: string;
+    total: number;
+    notes: string | null;
+    items: Array<{
+        sale_item_id: number;
+        product_id: number;
+        product_name: string | null;
+        sku: string | null;
+        quantity: number;
+        unit_price: number;
+        total: number;
+        cogs: number;
+        gross_profit: number;
+    }>;
 }
 
 export interface DashboardData {
@@ -79,13 +92,11 @@ export interface DashboardResponse {
     data: DashboardData;
 }
 
-
 export interface SalesTrendItem {
     date: string;
     sales: number;
     transaction_count: number;
 }
-
 
 export interface SalesTrendResponse {
     message: string;
@@ -98,5 +109,4 @@ export interface SalesTrendResponse {
 
     data: SalesTrendItem[];
 }
-
 

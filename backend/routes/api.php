@@ -105,10 +105,10 @@ Route::middleware('auth:sanctum')->group(function () {
         );
 
         /*
-|----------------------------------------------------------------------
-| System Settings
-|----------------------------------------------------------------------
-*/
+        |--------------------------------------------------------------------------
+        | System Settings
+        |--------------------------------------------------------------------------
+        */
 
         Route::get(
             '/settings',
@@ -230,6 +230,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get(
             '/inventory/history',
             [InventoryController::class, 'history']
+        );
+
+        Route::get(
+            '/inventory/export',
+            [InventoryController::class, 'export']
         );
 
         Route::get(
