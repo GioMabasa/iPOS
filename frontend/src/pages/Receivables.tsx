@@ -14,6 +14,12 @@ import type {
 
 const PER_PAGE = 10;
 
+/*
+|--------------------------------------------------------------------------
+| Helpers
+|--------------------------------------------------------------------------
+*/
+
 function formatCurrency(value: number | string): string {
   return `₱${Number(value).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
@@ -36,16 +42,32 @@ function formatDate(value: string | null): string {
 function getStatusClass(status: Receivable["status"]): string {
   switch (status) {
     case "paid":
-      return "bg-green-100 text-green-700";
+      return "border border-emerald-200 bg-emerald-50 text-emerald-700";
 
     case "partial":
-      return "bg-blue-100 text-blue-700";
+      return "border border-blue-200 bg-blue-50 text-blue-700";
 
     case "overdue":
-      return "bg-red-100 text-red-700";
+      return "border border-red-200 bg-red-50 text-red-700";
 
     default:
-      return "bg-yellow-100 text-yellow-700";
+      return "border border-amber-200 bg-amber-50 text-amber-700";
+  }
+}
+
+function getStatusDotClass(status: Receivable["status"]): string {
+  switch (status) {
+    case "paid":
+      return "bg-emerald-500";
+
+    case "partial":
+      return "bg-blue-500";
+
+    case "overdue":
+      return "bg-red-500";
+
+    default:
+      return "bg-amber-500";
   }
 }
 
@@ -64,6 +86,176 @@ function getStatusLabel(status: Receivable["status"]): string {
       return "Unpaid";
   }
 }
+
+/*
+|--------------------------------------------------------------------------
+| Icons
+|--------------------------------------------------------------------------
+*/
+
+function ReceivablesIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8 8h8M8 12h3M8 16h4"
+      />
+    </svg>
+  );
+}
+
+function SearchIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path strokeLinecap="round" d="m20 20-4-4" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className={className}
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
+function EyeIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
+      />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
+function CreditCardIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path strokeLinecap="round" d="M3 10h18M7 15h3" />
+    </svg>
+  );
+}
+
+function ChevronLeftIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className={className}
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className={className}
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m8 12 2.5 2.5L16 9"
+      />
+    </svg>
+  );
+}
+
+function AlertCircleIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" d="M12 8v4" />
+      <path strokeLinecap="round" d="M12 16h.01" />
+    </svg>
+  );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Component
+|--------------------------------------------------------------------------
+*/
 
 export default function Receivables() {
   const [receivables, setReceivables] = useState<Receivable[]>([]);
@@ -240,42 +432,108 @@ export default function Receivables() {
   }, [search, statusFilter]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Receivables</h1>
+    <div className="min-h-full bg-slate-50 p-4 sm:p-6 lg:p-8">
+      {/* ================================================================
+          HEADER
+      ================================================================ */}
 
-        <p className="mt-1 text-sm text-gray-500">
-          Manage customer charge balances and payments.
-        </p>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <ReceivablesIcon className="h-5 w-5" />
+          </div>
+
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Receivables
+            </h1>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Manage customer charge balances and payments.
+            </p>
+          </div>
+        </div>
       </div>
 
+      {/* ================================================================
+          ERROR
+      ================================================================ */}
+
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+          <AlertCircleIcon className="h-5 w-5 shrink-0" />
+
+          <span>{error}</span>
+
+          <button
+            type="button"
+            onClick={() => setError("")}
+            className="ml-auto rounded-lg p-1 text-red-400 transition hover:bg-red-100 hover:text-red-600"
+            aria-label="Dismiss error"
+          >
+            <CloseIcon className="h-4 w-4" />
+          </button>
         </div>
       )}
 
-      <div className="rounded-xl bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="w-full md:max-w-md">
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search customer, sale number, or invoice..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
+      {/* ================================================================
+          FILTERS
+      ================================================================ */}
+
+      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="w-full lg:max-w-xl">
+            <label
+              htmlFor="receivables-search"
+              className="mb-2 block text-sm font-semibold text-slate-700"
+            >
+              Search Receivables
+            </label>
+
+            <div className="relative">
+              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                <SearchIcon className="h-4 w-4" />
+              </div>
+
+              <input
+                id="receivables-search"
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search customer, sale number, or invoice..."
+                className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+              />
+
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  aria-label="Clear search"
+                >
+                  <CloseIcon className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="w-full md:w-44">
+          <div className="w-full lg:w-48">
+            <label
+              htmlFor="receivables-status"
+              className="mb-2 block text-sm font-semibold text-slate-700"
+            >
+              Status
+            </label>
+
             <select
+              id="receivables-status"
               value={statusFilter}
               onChange={(event) =>
                 setStatusFilter(
                   event.target.value as "all" | Receivable["status"],
                 )
               }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
             >
               <option value="all">All Status</option>
               <option value="unpaid">Unpaid</option>
@@ -285,123 +543,211 @@ export default function Receivables() {
             </select>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+      {/* ================================================================
+          RECEIVABLE LIST
+      ================================================================ */}
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {/* TABLE HEADER */}
+
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <ReceivablesIcon className="h-4 w-4" />
+            </div>
+
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                Receivable Records
+              </h2>
+
+              <p className="mt-0.5 text-xs text-slate-500">
+                Customer charge balances and payment status.
+              </p>
+            </div>
+          </div>
+
+          {!loading && filteredReceivables.length > 0 && (
+            <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 sm:inline-flex">
+              {filteredReceivables.length} records
+            </span>
+          )}
+        </div>
+
+        {/* TABLE */}
+
         {loading ? (
-          <div className="px-6 py-10 text-center text-sm text-gray-500">
-            Loading receivables...
+          <div className="flex min-h-[320px] items-center justify-center">
+            <div className="flex flex-col items-center gap-3 text-sm text-slate-500">
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
+
+              <span>Loading receivables...</span>
+            </div>
           </div>
         ) : paginatedReceivables.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-gray-500">
-            No receivables found.
+          <div className="flex min-h-[320px] items-center justify-center px-6">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                <ReceivablesIcon className="h-6 w-6" />
+              </div>
+
+              <p className="text-sm font-semibold text-slate-800">
+                No receivables found.
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Try adjusting your search or status filter.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="border-b border-gray-200 bg-gray-50">
+            <table className="min-w-[1250px] w-full">
+              <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Customer
                   </th>
 
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Invoice
                   </th>
 
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Sale Date
                   </th>
 
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Due Date
                   </th>
 
-                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Total
                   </th>
 
-                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Paid
                   </th>
 
-                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Balance
                   </th>
 
-                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Status
                   </th>
 
-                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Action
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-slate-100">
                 {paginatedReceivables.map((receivable) => (
-                  <tr key={receivable.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">
-                        {receivable.customer?.name ?? "-"}
-                      </div>
+                  <tr
+                    key={receivable.id}
+                    className="group transition hover:bg-slate-50/70"
+                  >
+                    {/* CUSTOMER */}
 
-                      {receivable.customer?.business_type && (
-                        <div className="text-xs text-gray-500">
-                          {receivable.customer.business_type}
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-sm font-bold uppercase text-indigo-600">
+                          {(receivable.customer?.name ?? "-").charAt(0)}
                         </div>
-                      )}
+
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-900">
+                            {receivable.customer?.name ?? "-"}
+                          </div>
+
+                          {receivable.customer?.business_type && (
+                            <div className="mt-0.5 text-xs text-slate-500">
+                              {receivable.customer.business_type}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </td>
 
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      <div className="font-medium">
+                    {/* INVOICE */}
+
+                    <td className="px-5 py-4">
+                      <div className="font-semibold text-slate-900">
                         {receivable.invoice_number}
                       </div>
 
-                      <div className="text-xs text-gray-500">
+                      <div className="mt-0.5 text-xs text-slate-500">
                         {receivable.sale_number}
                       </div>
                     </td>
 
-                    <td className="px-6 py-4 text-sm text-gray-700">
+                    {/* SALE DATE */}
+
+                    <td className="px-5 py-4 text-sm text-slate-600">
                       {formatDate(receivable.sale_date)}
                     </td>
 
-                    <td className="px-6 py-4 text-sm text-gray-700">
+                    {/* DUE DATE */}
+
+                    <td className="px-5 py-4 text-sm text-slate-600">
                       {formatDate(receivable.due_date)}
                     </td>
 
-                    <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                    {/* TOTAL */}
+
+                    <td className="px-5 py-4 text-right text-sm font-semibold text-slate-900">
                       {formatCurrency(receivable.total)}
                     </td>
 
-                    <td className="px-6 py-4 text-right text-sm text-gray-700">
+                    {/* PAID */}
+
+                    <td className="px-5 py-4 text-right text-sm text-slate-600">
                       {formatCurrency(receivable.paid)}
                     </td>
 
-                    <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
-                      {formatCurrency(receivable.balance)}
+                    {/* BALANCE */}
+
+                    <td className="px-5 py-4 text-right">
+                      <span className="text-sm font-bold text-slate-900">
+                        {formatCurrency(receivable.balance)}
+                      </span>
                     </td>
 
-                    <td className="px-6 py-4 text-center">
+                    {/* STATUS */}
+
+                    <td className="px-5 py-4 text-center">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(
                           receivable.status,
                         )}`}
                       >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${getStatusDotClass(
+                            receivable.status,
+                          )}`}
+                        />
+
                         {getStatusLabel(receivable.status)}
                       </span>
                     </td>
 
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleViewDetails(receivable.id)}
-                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        View
-                      </button>
+                    {/* ACTION */}
+
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleViewDetails(receivable.id)}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                          View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -410,13 +756,26 @@ export default function Receivables() {
           </div>
         )}
 
+        {/* PAGINATION */}
+
         {!loading && filteredReceivables.length > 0 && (
-          <div className="flex flex-col gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-gray-500">
+          <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="text-sm text-slate-500">
               Showing{" "}
-              {Math.min((page - 1) * PER_PAGE + 1, filteredReceivables.length)}{" "}
-              to {Math.min(page * PER_PAGE, filteredReceivables.length)} of{" "}
-              {filteredReceivables.length}
+              <span className="font-semibold text-slate-700">
+                {Math.min(
+                  (page - 1) * PER_PAGE + 1,
+                  filteredReceivables.length,
+                )}
+              </span>{" "}
+              to{" "}
+              <span className="font-semibold text-slate-700">
+                {Math.min(page * PER_PAGE, filteredReceivables.length)}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-slate-700">
+                {filteredReceivables.length}
+              </span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -424,12 +783,13 @@ export default function Receivables() {
                 type="button"
                 disabled={page === 1}
                 onClick={() => setPage((current) => current - 1)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Previous
+                <ChevronLeftIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Previous</span>
               </button>
 
-              <span className="px-2 text-sm text-gray-600">
+              <span className="rounded-lg bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600">
                 {page} / {totalPages}
               </span>
 
@@ -437,27 +797,40 @@ export default function Receivables() {
                 type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage((current) => current + 1)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Next
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRightIcon className="h-4 w-4" />
               </button>
             </div>
           </div>
         )}
-      </div>
+      </section>
+
+      {/* ================================================================
+          RECEIVABLE DETAILS MODAL
+      ================================================================ */}
 
       {showDetails && selectedReceivable && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
-            <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Receivable Details
-                </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]">
+          <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            {/* HEADER */}
 
-                <p className="text-sm text-gray-500">
-                  {selectedReceivable.invoice_number}
-                </p>
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <ReceivablesIcon className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Receivable Details
+                  </h2>
+
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {selectedReceivable.invoice_number}
+                  </p>
+                </div>
               </div>
 
               <button
@@ -466,221 +839,318 @@ export default function Receivables() {
                   setShowDetails(false);
                   setSelectedReceivable(null);
                 }}
-                className="rounded-lg px-2 py-1 text-xl text-gray-500 hover:bg-gray-100"
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Close details"
               >
-                ×
+                <CloseIcon className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">
-              {detailsLoading ? (
-                <div className="py-10 text-center text-sm text-gray-500">
-                  Loading details...
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div>
-                      <div className="text-xs font-medium uppercase text-gray-500">
-                        Customer
-                      </div>
+            {/* BODY */}
 
-                      <div className="mt-1 font-medium text-gray-900">
-                        {selectedReceivable.customer?.name ?? "-"}
-                      </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="space-y-6 p-5 sm:p-6">
+                {detailsLoading ? (
+                  <div className="flex min-h-[300px] items-center justify-center">
+                    <div className="flex flex-col items-center gap-3 text-sm text-slate-500">
+                      <div className="h-7 w-7 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
+
+                      <span>Loading details...</span>
                     </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* RECEIVABLE INFORMATION */}
 
-                    <div>
-                      <div className="text-xs font-medium uppercase text-gray-500">
-                        Sale Date
+                    <section>
+                      <div className="mb-4">
+                        <h3 className="text-sm font-bold text-slate-900">
+                          Receivable Information
+                        </h3>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Details of the customer charge transaction.
+                        </p>
                       </div>
 
-                      <div className="mt-1 text-sm text-gray-900">
-                        {formatDate(selectedReceivable.sale_date)}
-                      </div>
-                    </div>
+                      <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Customer
+                          </div>
 
-                    <div>
-                      <div className="text-xs font-medium uppercase text-gray-500">
-                        Due Date
+                          <div className="mt-1.5 font-semibold text-slate-900">
+                            {selectedReceivable.customer?.name ?? "-"}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Sale Date
+                          </div>
+
+                          <div className="mt-1.5 text-sm text-slate-700">
+                            {formatDate(selectedReceivable.sale_date)}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Due Date
+                          </div>
+
+                          <div className="mt-1.5 text-sm text-slate-700">
+                            {formatDate(selectedReceivable.due_date)}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Status
+                          </div>
+
+                          <div className="mt-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(
+                                selectedReceivable.status,
+                              )}`}
+                            >
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${getStatusDotClass(
+                                  selectedReceivable.status,
+                                )}`}
+                              />
+
+                              {getStatusLabel(selectedReceivable.status)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* FINANCIAL SUMMARY */}
+
+                    <section>
+                      <div className="mb-4">
+                        <h3 className="text-sm font-bold text-slate-900">
+                          Payment Summary
+                        </h3>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Current charge and payment balances.
+                        </p>
                       </div>
 
-                      <div className="mt-1 text-sm text-gray-900">
-                        {formatDate(selectedReceivable.due_date)}
-                      </div>
-                    </div>
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="text-sm font-medium text-slate-500">
+                            Total
+                          </div>
 
-                    <div>
-                      <div className="text-xs font-medium uppercase text-gray-500">
-                        Status
-                      </div>
+                          <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                            {formatCurrency(selectedReceivable.total)}
+                          </div>
+                        </div>
 
-                      <div className="mt-1">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(
-                            selectedReceivable.status,
-                          )}`}
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="text-sm font-medium text-slate-500">
+                            Paid
+                          </div>
+
+                          <div className="mt-2 text-2xl font-bold tracking-tight text-emerald-600">
+                            {formatCurrency(selectedReceivable.paid)}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-5 shadow-sm">
+                          <div className="text-sm font-medium text-indigo-600">
+                            Balance
+                          </div>
+
+                          <div className="mt-2 text-2xl font-bold tracking-tight text-indigo-700">
+                            {formatCurrency(selectedReceivable.balance)}
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* RECORD PAYMENT */}
+
+                    {Number(selectedReceivable.balance) > 0 && (
+                      <div>
+                        <button
+                          type="button"
+                          onClick={handleOpenPaymentModal}
+                          className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                         >
-                          {getStatusLabel(selectedReceivable.status)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <div className="rounded-lg bg-gray-50 p-4">
-                      <div className="text-sm text-gray-500">Total</div>
-
-                      <div className="mt-1 text-xl font-bold text-gray-900">
-                        {formatCurrency(selectedReceivable.total)}
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg bg-gray-50 p-4">
-                      <div className="text-sm text-gray-500">Paid</div>
-
-                      <div className="mt-1 text-xl font-bold text-gray-900">
-                        {formatCurrency(selectedReceivable.paid)}
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg bg-gray-50 p-4">
-                      <div className="text-sm text-gray-500">Balance</div>
-
-                      <div className="mt-1 text-xl font-bold text-gray-900">
-                        {formatCurrency(selectedReceivable.balance)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {Number(selectedReceivable.balance) > 0 && (
-                    <div>
-                      <button
-                        type="button"
-                        onClick={handleOpenPaymentModal}
-                        className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
-                      >
-                        Record Payment
-                      </button>
-                    </div>
-                  )}
-
-                  <div>
-                    <h3 className="mb-3 text-base font-semibold text-gray-900">
-                      Payment History
-                    </h3>
-
-                    {selectedReceivable.payments.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
-                        No payments recorded.
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto rounded-lg border border-gray-200">
-                        <table className="min-w-full">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">
-                                Date
-                              </th>
-
-                              <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">
-                                Amount
-                              </th>
-
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">
-                                Method
-                              </th>
-
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">
-                                Reference
-                              </th>
-
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">
-                                Received By
-                              </th>
-                            </tr>
-                          </thead>
-
-                          <tbody className="divide-y divide-gray-100">
-                            {selectedReceivable.payments.map((payment) => (
-                              <tr key={payment.id}>
-                                <td className="px-4 py-3 text-sm text-gray-700">
-                                  {formatDate(
-                                    payment.payment_date.slice(0, 10),
-                                  )}
-                                </td>
-
-                                <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
-                                  {formatCurrency(payment.amount)}
-                                </td>
-
-                                <td className="px-4 py-3 text-sm capitalize text-gray-700">
-                                  {payment.payment_method}
-                                </td>
-
-                                <td className="px-4 py-3 text-sm text-gray-700">
-                                  {payment.reference_number ?? "-"}
-                                </td>
-
-                                <td className="px-4 py-3 text-sm text-gray-700">
-                                  {payment.received_by?.name ?? "-"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                          <CreditCardIcon className="h-4 w-4" />
+                          Record Payment
+                        </button>
                       </div>
                     )}
-                  </div>
-                </div>
-              )}
+
+                    {/* PAYMENT HISTORY */}
+
+                    <section>
+                      <div className="mb-4">
+                        <h3 className="text-sm font-bold text-slate-900">
+                          Payment History
+                        </h3>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Payments recorded against this receivable.
+                        </p>
+                      </div>
+
+                      {selectedReceivable.payments.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
+                          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm">
+                            <CreditCardIcon className="h-5 w-5" />
+                          </div>
+
+                          <p className="text-sm font-semibold text-slate-700">
+                            No payments recorded.
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            Payment history will appear here once a payment is
+                            recorded.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                          <table className="min-w-[750px] w-full">
+                            <thead className="border-b border-slate-200 bg-slate-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Date
+                                </th>
+
+                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Amount
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Method
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Reference
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Received By
+                                </th>
+                              </tr>
+                            </thead>
+
+                            <tbody className="divide-y divide-slate-100">
+                              {selectedReceivable.payments.map((payment) => (
+                                <tr
+                                  key={payment.id}
+                                  className="transition hover:bg-slate-50/70"
+                                >
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {formatDate(
+                                      payment.payment_date.slice(0, 10),
+                                    )}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">
+                                    {formatCurrency(payment.amount)}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm capitalize text-slate-600">
+                                    {payment.payment_method}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {payment.reference_number ?? "-"}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {payment.received_by?.name ?? "-"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </section>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {showPaymentModal && selectedReceivable && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-xl bg-white shadow-xl">
-            <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Record Payment
-                </h2>
+      {/* ================================================================
+          RECORD PAYMENT MODAL
+      ================================================================ */}
 
-                <p className="text-sm text-gray-500">
-                  {selectedReceivable.invoice_number}
-                </p>
+      {showPaymentModal && selectedReceivable && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]">
+          <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            {/* HEADER */}
+
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <CreditCardIcon className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Record Payment
+                  </h2>
+
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {selectedReceivable.invoice_number}
+                  </p>
+                </div>
               </div>
 
               <button
                 type="button"
                 onClick={handleClosePaymentModal}
                 disabled={paymentLoading}
-                className="rounded-lg px-2 py-1 text-xl text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Close payment modal"
               >
-                ×
+                <CloseIcon className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-5">
-              {paymentError && (
-                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {paymentError}
-                </div>
-              )}
+            {/* BODY */}
 
-              <div className="space-y-4">
-                <div className="rounded-lg bg-gray-50 p-4">
-                  <div className="text-sm text-gray-500">Remaining Balance</div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="space-y-5 p-5">
+                {paymentError && (
+                  <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <AlertCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />
 
-                  <div className="mt-1 text-xl font-bold text-gray-900">
+                    <span>{paymentError}</span>
+                  </div>
+                )}
+
+                {/* BALANCE */}
+
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
+                    Remaining Balance
+                  </div>
+
+                  <div className="mt-1 text-2xl font-bold tracking-tight text-indigo-700">
                     {formatCurrency(selectedReceivable.balance)}
                   </div>
                 </div>
 
+                {/* PAYMENT DATE */}
+
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Payment Date
                   </label>
 
@@ -689,12 +1159,14 @@ export default function Receivables() {
                     value={paymentDate}
                     onChange={(event) => setPaymentDate(event.target.value)}
                     disabled={paymentLoading}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:bg-slate-50"
                   />
                 </div>
 
+                {/* PAYMENT METHOD */}
+
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Payment Method
                   </label>
 
@@ -704,33 +1176,43 @@ export default function Receivables() {
                       setPaymentMethod(event.target.value as "cash" | "check")
                     }
                     disabled={paymentLoading}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:bg-slate-50"
                   >
                     <option value="cash">Cash</option>
                     <option value="check">Check</option>
                   </select>
                 </div>
 
+                {/* AMOUNT */}
+
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Amount
                   </label>
 
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    max={Number(selectedReceivable.balance)}
-                    value={paymentAmount}
-                    onChange={(event) => setPaymentAmount(event.target.value)}
-                    disabled={paymentLoading}
-                    placeholder="0.00"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
-                  />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">
+                      ₱
+                    </span>
+
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      max={Number(selectedReceivable.balance)}
+                      value={paymentAmount}
+                      onChange={(event) => setPaymentAmount(event.target.value)}
+                      disabled={paymentLoading}
+                      placeholder="0.00"
+                      className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:bg-slate-50"
+                    />
+                  </div>
                 </div>
 
+                {/* REFERENCE */}
+
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Reference Number
                   </label>
 
@@ -740,12 +1222,14 @@ export default function Receivables() {
                     onChange={(event) => setReferenceNumber(event.target.value)}
                     disabled={paymentLoading}
                     placeholder="Optional"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:bg-slate-50"
                   />
                 </div>
 
+                {/* NOTES */}
+
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Notes
                   </label>
 
@@ -755,18 +1239,20 @@ export default function Receivables() {
                     disabled={paymentLoading}
                     rows={3}
                     placeholder="Optional"
-                    className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                    className="w-full resize-none rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:bg-slate-50"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex shrink-0 justify-end gap-3 border-t border-gray-200 px-5 py-4">
+            {/* FOOTER */}
+
+            <div className="flex shrink-0 justify-end gap-3 border-t border-slate-200 bg-white px-5 py-4">
               <button
                 type="button"
                 onClick={handleClosePaymentModal}
                 disabled={paymentLoading}
-                className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -780,8 +1266,10 @@ export default function Receivables() {
                   Number(paymentAmount) <= 0 ||
                   Number(paymentAmount) > Number(selectedReceivable.balance)
                 }
-                className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                <CheckCircleIcon className="h-4 w-4" />
+
                 {paymentLoading ? "Recording..." : "Record Payment"}
               </button>
             </div>

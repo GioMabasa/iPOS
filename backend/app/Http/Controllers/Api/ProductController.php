@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Exports\ProductsExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
@@ -140,6 +142,42 @@ class ProductController extends Controller
             ->withQueryString();
 
         return response()->json($products);
+    }
+
+    public function export(Request $request)
+    {
+        $validated = $request->validate([
+            'search' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'category_id' => [
+                'nullable',
+                'integer',
+                'exists:categories,id',
+            ],
+
+            'is_active' => [
+                'nullable',
+                'boolean',
+            ],
+        ]);
+
+        return Excel::download(
+            new ProductsExport(
+                search: $validated['search'] ?? null,
+                categoryId: $validated['category_id'] ?? null,
+                isActive: array_key_exists(
+                    'is_active',
+                    $validated
+                )
+                    ? $validated['is_active']
+                    : null,
+            ),
+            'products-' . now()->format('Y-m-d-His') . '.xlsx'
+        );
     }
 
     public function store(Request $request): JsonResponse

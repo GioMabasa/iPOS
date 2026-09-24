@@ -233,30 +233,37 @@ export default function ProductForm({
   */
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
         {/* ================================================================
             HEADER
         ================================================================ */}
 
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              {isEdit ? "Edit Product" : "Add Product"}
-            </h2>
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 py-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-900 text-sm font-bold text-white">
+              {isEdit ? "✎" : "+"}
+            </div>
 
-            <p className="mt-1 text-sm text-gray-500">
-              {isEdit
-                ? "Update product information."
-                : "Add a new product to your inventory."}
-            </p>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {isEdit ? "Edit Product" : "Add Product"}
+              </h2>
+
+              <p className="mt-0.5 text-sm text-gray-500">
+                {isEdit
+                  ? "Update product information."
+                  : "Add a new product to your inventory."}
+              </p>
+            </div>
           </div>
 
           <button
             type="button"
             onClick={handleClose}
             disabled={loading}
-            className="text-xl text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            aria-label="Close"
+            className="ml-4 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-2xl leading-none text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             ×
           </button>
@@ -266,258 +273,335 @@ export default function ProductForm({
             FORM
         ================================================================ */}
 
-        <form onSubmit={handleSubmit} className="space-y-5 p-6">
-          {/* Error */}
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="overflow-y-auto">
+            <div className="space-y-7 p-6">
+              {/* Error */}
 
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-              {error}
+              {error && (
+                <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-600">
+                    !
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-red-700">
+                      Unable to save product
+                    </p>
+
+                    <p className="mt-0.5 text-sm text-red-600">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ==========================================================
+                  BASIC INFORMATION
+              ========================================================== */}
+
+              <section>
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
+                    Basic Information
+                  </h3>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Enter the basic information for this product.
+                  </p>
+                </div>
+
+                <div className="space-y-5 rounded-xl border border-gray-200 bg-white p-5">
+                  {/* Product Name */}
+
+                  <div>
+                    <label
+                      htmlFor="product_name"
+                      className="mb-1.5 block text-sm font-medium text-gray-700"
+                    >
+                      Product Name
+                      <span className="ml-1 text-red-500">*</span>
+                    </label>
+
+                    <input
+                      id="product_name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      autoFocus
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                      placeholder="Product name"
+                    />
+                  </div>
+
+                  {/* Category */}
+
+                  <div>
+                    <label
+                      htmlFor="product_category"
+                      className="mb-1.5 block text-sm font-medium text-gray-700"
+                    >
+                      Category
+                    </label>
+
+                    <select
+                      id="product_category"
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      disabled={categoriesLoading}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                    >
+                      <option value="">
+                        {categoriesLoading
+                          ? "Loading categories..."
+                          : "Select category"}
+                      </option>
+
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* SKU + Barcode */}
+
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    {/* SKU */}
+
+                    <div>
+                      <label
+                        htmlFor="product_sku"
+                        className="mb-1.5 block text-sm font-medium text-gray-700"
+                      >
+                        SKU
+                        <span className="ml-1 text-red-500">*</span>
+                      </label>
+
+                      <input
+                        id="product_sku"
+                        type="text"
+                        value={sku}
+                        onChange={(e) => setSku(e.target.value)}
+                        required
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                        placeholder="SKU-0001"
+                      />
+                    </div>
+
+                    {/* Barcode */}
+
+                    <div>
+                      <label
+                        htmlFor="product_barcode"
+                        className="mb-1.5 block text-sm font-medium text-gray-700"
+                      >
+                        Barcode
+                      </label>
+
+                      <input
+                        id="product_barcode"
+                        type="text"
+                        value={barcode}
+                        onChange={(e) => setBarcode(e.target.value)}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 font-mono text-sm text-gray-900 outline-none transition placeholder:font-sans placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                        placeholder="Optional"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Description */}
+
+                  <div>
+                    <label
+                      htmlFor="product_description"
+                      className="mb-1.5 block text-sm font-medium text-gray-700"
+                    >
+                      Description
+                    </label>
+
+                    <textarea
+                      id="product_description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={3}
+                      className="w-full resize-none rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                      placeholder="Add a short description of this product..."
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {/* ==========================================================
+                  PRICING & INVENTORY
+              ========================================================== */}
+
+              <section>
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
+                    Pricing & Inventory
+                  </h3>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Set the selling price, unit, and stock threshold.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 rounded-xl border border-gray-200 bg-white p-5 md:grid-cols-2">
+                  {/* Unit */}
+
+                  <div>
+                    <label
+                      htmlFor="product_unit"
+                      className="mb-1.5 block text-sm font-medium text-gray-700"
+                    >
+                      Unit
+                    </label>
+
+                    <select
+                      id="product_unit"
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                    >
+                      {units.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Selling Price */}
+
+                  <div>
+                    <label
+                      htmlFor="selling_price"
+                      className="mb-1.5 block text-sm font-medium text-gray-700"
+                    >
+                      Selling Price
+                      <span className="ml-1 text-red-500">*</span>
+                    </label>
+
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
+                        ₱
+                      </span>
+
+                      <input
+                        id="selling_price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={sellingPrice}
+                        onChange={(e) => setSellingPrice(e.target.value)}
+                        required
+                        className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-8 pr-3.5 text-sm text-gray-900 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Minimum Stock */}
+
+                  <div className="md:col-span-2">
+                    <label
+                      htmlFor="minimum_stock"
+                      className="mb-1.5 block text-sm font-medium text-gray-700"
+                    >
+                      Minimum Stock
+                    </label>
+
+                    <input
+                      id="minimum_stock"
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={minimumStock}
+                      onFocus={(event) => event.currentTarget.select()}
+                      onChange={(e) => setMinimumStock(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                      placeholder="0"
+                    />
+
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      Used to identify products that are running low on stock.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* ==========================================================
+                  PRODUCT STATUS
+              ========================================================== */}
+
+              <section>
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
+                    Product Status
+                  </h3>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Control whether this product is available for use.
+                  </p>
+                </div>
+
+                <label
+                  htmlFor="is_active"
+                  className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 transition ${
+                    isActive
+                      ? "border-green-200 bg-green-50/60"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                        isActive ? "bg-green-100" : "bg-gray-200"
+                      }`}
+                    >
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${
+                          isActive ? "bg-green-500" : "bg-gray-400"
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        Active Product
+                      </p>
+
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {isActive
+                          ? "This product is currently active."
+                          : "This product is currently inactive."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <input
+                    id="is_active"
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="h-5 w-5 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                  />
+                </label>
+              </section>
             </div>
-          )}
-
-          {/* ============================================================
-              PRODUCT NAME
-          ============================================================ */}
-
-          <div>
-            <label
-              htmlFor="product_name"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Product Name
-            </label>
-
-            <input
-              id="product_name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoFocus
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              placeholder="Product name"
-            />
           </div>
 
-          {/* ============================================================
-              CATEGORY
-          ============================================================ */}
-
-          <div>
-            <label
-              htmlFor="product_category"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Category
-            </label>
-
-            <select
-              id="product_category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              disabled={categoriesLoading}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
-            >
-              <option value="">
-                {categoriesLoading
-                  ? "Loading categories..."
-                  : "Select category"}
-              </option>
-
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* ============================================================
-              SKU + BARCODE
-          ============================================================ */}
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* SKU */}
-
-            <div>
-              <label
-                htmlFor="product_sku"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                SKU
-              </label>
-
-              <input
-                id="product_sku"
-                type="text"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="SKU-0001"
-              />
-            </div>
-
-            {/* Barcode */}
-
-            <div>
-              <label
-                htmlFor="product_barcode"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Barcode
-              </label>
-
-              <input
-                id="product_barcode"
-                type="text"
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="Optional"
-              />
-            </div>
-          </div>
-
-          {/* ============================================================
-              DESCRIPTION
-          ============================================================ */}
-
-          <div>
-            <label
-              htmlFor="product_description"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Description
-            </label>
-
-            <textarea
-              id="product_description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              placeholder="Product description"
-            />
-          </div>
-
-          {/* ============================================================
-              UNIT
-          ============================================================ */}
-
-          <div>
-            <label
-              htmlFor="product_unit"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Unit
-            </label>
-
-            <select
-              id="product_unit"
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              {units.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* ============================================================
-              SELLING PRICE
-          ============================================================ */}
-
-          <div>
-            <label
-              htmlFor="selling_price"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Selling Price
-            </label>
-
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                ₱
-              </span>
-
-              <input
-                id="selling_price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={sellingPrice}
-                onChange={(e) => setSellingPrice(e.target.value)}
-                required
-                className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="0.00"
-              />
-            </div>
-          </div>
-
-          {/* ============================================================
-              MINIMUM STOCK
-          ============================================================ */}
-
-          <div>
-            <label
-              htmlFor="minimum_stock"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Minimum Stock
-            </label>
-
-            <input
-              id="minimum_stock"
-              type="number"
-              step="0.001"
-              min="0"
-              value={minimumStock}
-              onFocus={(event) => event.currentTarget.select()}
-              onChange={(e) => setMinimumStock(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              placeholder="0"
-            />
-
-            <p className="mt-1 text-xs text-gray-500">
-              Used to identify products that are running low on stock.
-            </p>
-          </div>
-
-          {/* ============================================================
-              ACTIVE PRODUCT
-          ============================================================ */}
-
-          <div className="flex items-center gap-3">
-            <input
-              id="is_active"
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
-            />
-
-            <label
-              htmlFor="is_active"
-              className="text-sm font-medium text-gray-700"
-            >
-              Active Product
-            </label>
-          </div>
-
-          {/* ============================================================
+          {/* ==============================================================
               ACTIONS
-          ============================================================ */}
+          ============================================================== */}
 
-          <div className="flex justify-end gap-3 border-t pt-4">
+          <div className="flex shrink-0 justify-end gap-3 border-t border-gray-200 bg-gray-50/80 px-6 py-4">
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
@@ -525,7 +609,7 @@ export default function ProductForm({
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading
                 ? "Saving..."

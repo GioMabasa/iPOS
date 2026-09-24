@@ -62,6 +62,44 @@ export async function getProduct(
 
 /*
 |--------------------------------------------------------------------------
+| Get Product Inventory Details
+|--------------------------------------------------------------------------
+*/
+
+export async function getProductInventoryDetails(
+  id: number,
+): Promise<
+  Product & {
+    stock: number;
+    stock_value: number;
+    cost: number;
+    is_low_stock: boolean;
+    supplier_cost_history: {
+      supplier: string | null;
+      cost_price: number;
+      purchase_date: string | null;
+    }[];
+  }
+> {
+  const response = await api.get<{
+    data: Product & {
+      stock: number;
+      stock_value: number;
+      cost: number;
+      is_low_stock: boolean;
+      supplier_cost_history: {
+        supplier: string | null;
+        cost_price: number;
+        purchase_date: string | null;
+      }[];
+    };
+  }>(`/inventory/${id}`);
+
+  return response.data.data;
+}
+
+/*
+|--------------------------------------------------------------------------
 | Create Product
 |--------------------------------------------------------------------------
 */
@@ -133,4 +171,39 @@ export async function syncProductSuppliers(
     );
 
   return response.data.data;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Export Products
+|--------------------------------------------------------------------------
+*/
+
+export async function exportProducts(
+  params: {
+    search?: string;
+    category_id?: number | "";
+    is_active?: boolean | "";
+  } = {},
+): Promise<Blob> {
+  const response = await api.get("/products/export", {
+    params: {
+      ...params,
+
+      ...(params.is_active !== ""
+        ? {
+            is_active:
+              params.is_active === true
+                ? 1
+                : params.is_active === false
+                  ? 0
+                  : undefined,
+          }
+        : {}),
+    },
+
+    responseType: "blob",
+  });
+
+  return response.data;
 }

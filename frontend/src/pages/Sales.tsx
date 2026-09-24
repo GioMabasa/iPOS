@@ -393,13 +393,13 @@ export default function Sales() {
   const getStatusClass = (value: string) => {
     switch (value) {
       case "completed":
-        return "bg-green-100 text-green-700";
+        return "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200";
       case "refunded":
-        return "bg-yellow-100 text-yellow-700";
+        return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200";
       case "voided":
-        return "bg-red-100 text-red-700";
+        return "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200";
     }
   };
 
@@ -439,11 +439,11 @@ export default function Sales() {
   const getRequestActionClass = (value: string) => {
     switch (value) {
       case "void":
-        return "bg-red-100 text-red-700";
+        return "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200";
       case "refund":
-        return "bg-yellow-100 text-yellow-700";
+        return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200";
     }
   };
 
@@ -463,13 +463,13 @@ export default function Sales() {
   const getRequestStatusClass = (value: string) => {
     switch (value) {
       case "pending":
-        return "bg-yellow-100 text-yellow-700";
+        return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200";
       case "approved":
-        return "bg-green-100 text-green-700";
+        return "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200";
       case "rejected":
-        return "bg-red-100 text-red-700";
+        return "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200";
     }
   };
 
@@ -707,275 +707,808 @@ export default function Sales() {
   };
 
   return (
-    <div className="p-6">
+    <div className="min-h-full bg-slate-50 p-4 sm:p-6 lg:p-8">
+      {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Sales</h1>
-        <p className="text-sm text-gray-500">
-          View completed, refunded, and voided sales transactions.
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 3v18h18"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m7 15 3-3 3 2 5-6"
+                  />
+                </svg>
+              </div>
+
+              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
+                Transactions
+              </span>
+            </div>
+
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Sales
+            </h1>
+
+            <p className="mt-1 text-sm text-slate-500">
+              View completed, refunded, and voided sales transactions.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-7">
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Sales</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {formatCurrency(totalSales)}
-          </p>
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Total Sales */}
+        <div className="rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Total Sales</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {formatCurrency(totalSales)}
+              </p>
+            </div>
+
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-xl font-bold text-indigo-600">
+              ₱
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total COGS</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {formatCurrency(totalCogs)}
-          </p>
+        {/* Total COGS */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Total COGS</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {formatCurrency(totalCogs)}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m4 7.5 8 4.5 8-4.5M12 12v9"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Gross Profit</p>
-          <p className="mt-1 text-2xl font-bold text-green-600">
-            {formatCurrency(grossProfit)}
-          </p>
+        {/* Gross Profit */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Gross Profit</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-emerald-600">
+                {formatCurrency(grossProfit)}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 17h18"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 14.5 9 10l3 3 7-7"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Gross Margin</p>
-          <p className="mt-1 text-2xl font-bold text-green-600">
-            {Number(grossMargin).toFixed(2)}%
-          </p>
+        {/* Gross Margin */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Gross Margin</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-emerald-600">
+                {Number(grossMargin).toFixed(2)}%
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7 17 17 7"
+                />
+                <circle cx="7.5" cy="7.5" r="2.5" />
+                <circle cx="16.5" cy="16.5" r="2.5" />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Cash Sales</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {formatCurrency(cashSales)}
-          </p>
+        {/* Cash Sales */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Cash Sales</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {formatCurrency(cashSales)}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <rect x="3" y="6" width="18" height="12" rx="2" />
+                <circle cx="12" cy="12" r="2.5" />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Charge Sales</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {formatCurrency(chargeSales)}
-          </p>
+        {/* Charge Sales */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Charge Sales</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {formatCurrency(chargeSales)}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7 9h10M7 13h5"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Outstanding Balance</p>
-          <p className="mt-1 text-2xl font-bold text-orange-600">
-            {formatCurrency(outstandingBalance)}
-          </p>
+        {/* Outstanding Balance */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">
+                Outstanding Balance
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-orange-600">
+                {formatCurrency(outstandingBalance)}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Transactions</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {totalTransactions.toLocaleString()}
-          </p>
+        {/* Total Transactions */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">
+                Total Transactions
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {totalTransactions.toLocaleString()}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 8h8M8 12h8M8 16h5"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Items Sold</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {totalItemsSold.toLocaleString()}
-          </p>
+        {/* Total Items Sold */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">
+                Total Items Sold
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {totalItemsSold.toLocaleString()}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m4 7 8-4 8 4-8 4-8-4Z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m4 12 8 4 8-4M4 17l8 4 8-4"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Void</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {totalVoid.toLocaleString()}
-          </p>
+        {/* Total Void */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Total Void</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {totalVoid.toLocaleString()}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m9 9 6 6M15 9l-6 6"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Refund</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {totalRefund.toLocaleString()}
-          </p>
+        {/* Total Refund */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Total Refund</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {totalRefund.toLocaleString()}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M20 12a8 8 0 1 1-2.34-5.66"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M20 5v5h-5"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Discount</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {formatCurrency(totalDiscount)}
-          </p>
+        {/* Total Discount */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">
+                Total Discount
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {formatCurrency(totalDiscount)}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m7 7 10 10"
+                />
+                <circle cx="7.5" cy="7.5" r="2.5" />
+                <circle cx="16.5" cy="16.5" r="2.5" />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Tax</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {formatCurrency(totalTax)}
-          </p>
+        {/* Total Tax */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Total Tax</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                {formatCurrency(totalTax)}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 9h8M8 13h3M14 13h2M8 17h2M13 17h3"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
-        <input
-          type="text"
-          value={search}
-          onFocus={selectAllOnFocus}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          placeholder="Search sale, invoice, customer, cashier..."
-          className="w-full rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500 md:flex-1"
-        />
+      <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 6h16M7 12h10M10 18h4"
+                />
+              </svg>
+            </div>
 
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-          className="rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
-        >
-          <option value="">All Types</option>
-          <option value="completed">Completed</option>
-          <option value="refunded">Refunded</option>
-          <option value="voided">Voided</option>
-        </select>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">
+                Sales Filters
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                Search and filter transaction records.
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <select
-          value={paymentMethod}
-          onChange={(e) => {
-            setPaymentMethod(e.target.value);
-            setPage(1);
-          }}
-          className="rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
-        >
-          <option value="">All Payment Methods</option>
-          <option value="cash">Cash</option>
-          <option value="charge">Charge</option>
-        </select>
+        <div className="p-5">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+            {/* Search */}
+            <div className="relative lg:col-span-4">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-4.5 w-4.5"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m20 20-4-4"
+                  />
+                </svg>
+              </div>
 
-        {(user?.role === "admin" || user?.role === "manager") && (
-          <select
-            value={selectedUserId}
-            onChange={(e) => {
-              setSelectedUserId(
-                e.target.value === "" ? "" : Number(e.target.value),
-              );
-              setPage(1);
-            }}
-            className="rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
-          >
-            <option value="">All Users</option>
+              <input
+                type="text"
+                value={search}
+                onFocus={selectAllOnFocus}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search sale, invoice, customer, cashier..."
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
 
-            {users.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        )}
-
-        <select
-          value={datePreset}
-          onChange={(e) => handleDatePresetChange(e.target.value)}
-          className="rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
-        >
-          <option value="all">All Dates</option>
-          <option value="today">Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="this_week">This Week</option>
-          <option value="this_month">This Month</option>
-          <option value="last_month">Last Month</option>
-          <option value="custom">Custom</option>
-        </select>
-
-        {datePreset === "custom" && (
-          <>
-            <input
-              type="date"
-              value={dateFrom}
+            {/* Status */}
+            <select
+              value={status}
               onChange={(e) => {
-                setDateFrom(e.target.value);
+                setStatus(e.target.value);
                 setPage(1);
               }}
-              className="rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
-            />
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
+            >
+              <option value="">All Types</option>
+              <option value="completed">Completed</option>
+              <option value="refunded">Refunded</option>
+              <option value="voided">Voided</option>
+            </select>
 
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom || undefined}
+            {/* Payment Method */}
+            <select
+              value={paymentMethod}
               onChange={(e) => {
-                setDateTo(e.target.value);
+                setPaymentMethod(e.target.value);
                 setPage(1);
               }}
-              className="rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
-            />
-          </>
-        )}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
+            >
+              <option value="">All Payment Methods</option>
+              <option value="cash">Cash</option>
+              <option value="charge">Charge</option>
+            </select>
 
-        <button
-          type="button"
-          onClick={clearFilters}
-          className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Clear Filters
-        </button>
+            {/* User */}
+            {(user?.role === "admin" || user?.role === "manager") && (
+              <select
+                value={selectedUserId}
+                onChange={(e) => {
+                  setSelectedUserId(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  );
+                  setPage(1);
+                }}
+                className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
+              >
+                <option value="">All Users</option>
 
-        <button
-          type="button"
-          onClick={handleExport}
-          disabled={exportLoading}
-          className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {exportLoading ? "Exporting..." : "Export to Spreadsheet"}
-        </button>
+                {users.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Date Preset */}
+            <select
+              value={datePreset}
+              onChange={(e) => handleDatePresetChange(e.target.value)}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
+            >
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="this_week">This Week</option>
+              <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          {datePreset === "custom" && (
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                  From
+                </label>
+
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    setPage(1);
+                  }}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                  To
+                </label>
+
+                <input
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={(e) => {
+                    setDateTo(e.target.value);
+                    setPage(1);
+                  }}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-4 w-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 6h18M9 6V4h6v2M8 10v7M12 10v7M16 10v7M5 6l1 15h12l1-15"
+                />
+              </svg>
+              Clear Filters
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={exportLoading}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {exportLoading ? (
+                <>
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4Z"
+                    />
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-4 w-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 3v12"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m8 11 4 4 4-4"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 21h14"
+                    />
+                  </svg>
+                  Export to Spreadsheet
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* My Requests - Cashier Only */}
       {user?.role === "cashier" && myActionRequests.length > 0 && (
-        <div className="mb-6 overflow-hidden rounded-lg border bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b px-5 py-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800">
-                My Requests
-              </h2>
+        <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8 7h8M8 11h5"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                  />
+                </svg>
+              </div>
 
-              <p className="text-sm text-gray-500">
-                Track your Void and Refund approval requests.
-              </p>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-800">
+                  My Requests
+                </h2>
+
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Track your Void and Refund approval requests.
+                </p>
+              </div>
             </div>
 
             <button
               type="button"
               onClick={loadMyActionRequests}
-              className="rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
             >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-4 w-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M20 11a8 8 0 0 0-14.9-4M4 5v4h4"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 13a8 8 0 0 0 14.9 4M20 19v-4h-4"
+                />
+              </svg>
               Refresh
             </button>
           </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr className="border-b">
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
+              <thead className="bg-slate-50/70">
+                <tr className="border-b border-slate-100">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Sale #
                   </th>
 
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Invoice #
                   </th>
 
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">
+                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Type
                   </th>
 
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Amount
                   </th>
 
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">
+                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Status
                   </th>
 
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Requested
                   </th>
                 </tr>
@@ -985,19 +1518,19 @@ export default function Sales() {
                 {myActionRequests.map((request) => (
                   <tr
                     key={request.id}
-                    className="border-b last:border-b-0 hover:bg-gray-50"
+                    className="border-b border-slate-100 last:border-b-0 transition hover:bg-slate-50/70"
                   >
-                    <td className="px-4 py-3 font-medium text-gray-800">
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-slate-800">
                       {request.sale?.sale_number ?? "—"}
                     </td>
 
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-500">
                       {request.sale?.invoice_number ?? "—"}
                     </td>
 
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-5 py-4 text-center">
                       <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getRequestActionClass(
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRequestActionClass(
                           request.action_type,
                         )}`}
                       >
@@ -1005,13 +1538,13 @@ export default function Sales() {
                       </span>
                     </td>
 
-                    <td className="px-4 py-3 text-right font-medium">
+                    <td className="whitespace-nowrap px-5 py-4 text-right font-semibold text-slate-800">
                       {formatCurrency(request.sale?.total ?? 0)}
                     </td>
 
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-5 py-4 text-center">
                       <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getRequestStatusClass(
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRequestStatusClass(
                           request.status,
                         )}`}
                       >
@@ -1019,7 +1552,7 @@ export default function Sales() {
                       </span>
                     </td>
 
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-500">
                       {formatDate(request.created_at)}
                     </td>
                   </tr>
@@ -1028,74 +1561,220 @@ export default function Sales() {
             </table>
           </div>
 
-          <div className="border-t px-5 py-4">
+          <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
             {myActionRequests.some(
               (request) => request.status === "pending",
             ) && (
-              <p className="text-sm text-yellow-700">
-                You have a pending request waiting for Manager/Admin approval.
-              </p>
+              <div className="flex items-start gap-3 text-sm text-amber-700">
+                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 8v4"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 16h.01"
+                    />
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                </div>
+
+                <p>
+                  You have a pending request waiting for Manager/Admin approval.
+                </p>
+              </div>
             )}
 
             {myActionRequests.some(
               (request) => request.status === "rejected",
             ) && (
-              <p className="mt-1 text-sm text-red-600">
-                Some of your requests were rejected. Check the request details
-                in the table above.
-              </p>
+              <div className="mt-2 flex items-start gap-3 text-sm text-red-600">
+                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m9 9 6 6M15 9l-6 6"
+                    />
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                </div>
+
+                <p>
+                  Some of your requests were rejected. Check the request details
+                  in the table above.
+                </p>
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+      {/* Sales Table */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {loading ? (
-          <div className="p-6 text-center text-gray-500">Loading sales...</div>
+          <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+              <svg
+                className="h-6 w-6 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                />
+                <path
+                  className="opacity-90"
+                  fill="currentColor"
+                  d="M12 3a9 9 0 0 1 9 9h-2.5a6.5 6.5 0 0 0-6.5-6.5V3Z"
+                />
+              </svg>
+            </div>
+
+            <p className="mt-4 text-sm font-semibold text-slate-700">
+              Loading sales...
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">
+              Please wait while the transactions are being loaded.
+            </p>
+          </div>
         ) : error ? (
-          <div className="p-6 text-center text-red-500">{error}</div>
+          <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-6 w-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v4"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 17h.01"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M10.3 3.8 2.9 17a2 2 0 0 0 1.7 3h14.8a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z"
+                />
+              </svg>
+            </div>
+
+            <p className="mt-4 text-sm font-semibold text-red-700">
+              Unable to load sales
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">{error}</p>
+          </div>
         ) : sales.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">No sales found.</div>
+          <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-6 w-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 9h8M8 13h5"
+                />
+              </svg>
+            </div>
+
+            <p className="mt-4 text-sm font-semibold text-slate-700">
+              No sales found.
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">
+              Try adjusting your search or filters.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr className="border-b">
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
+            <table className="min-w-[1250px] w-full text-sm">
+              <thead className="bg-slate-50/70">
+                <tr className="border-b border-slate-100">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Sale #
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
+
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Invoice #
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
+
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Date
                   </th>
 
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Sold By
                   </th>
 
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">
+                  <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Payment Method
                   </th>
 
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Total
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     COGS
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Gross Profit
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Margin
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">
+
+                  <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Type
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600">
+
+                  <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Action
                   </th>
                 </tr>
@@ -1105,55 +1784,74 @@ export default function Sales() {
                 {sales.map((sale) => (
                   <tr
                     key={sale.id}
-                    className="border-b last:border-b-0 hover:bg-gray-50"
+                    className="border-b border-slate-100 last:border-b-0 transition hover:bg-slate-50/70"
                   >
-                    <td className="px-4 py-3 font-medium text-gray-800">
-                      {sale.sale_number}
+                    <td className="px-5 py-4">
+                      <p className="font-semibold text-slate-900">
+                        {sale.sale_number}
+                      </p>
                     </td>
 
-                    <td className="px-4 py-3 text-gray-600">
-                      {sale.invoice_number}
+                    <td className="px-5 py-4">
+                      <p className="text-slate-600">{sale.invoice_number}</p>
                     </td>
 
-                    <td className="px-4 py-3 text-gray-600">
-                      {formatDate(sale.sale_date)}
+                    <td className="px-5 py-4">
+                      <p className="whitespace-nowrap font-medium text-slate-700">
+                        {formatDate(sale.sale_date)}
+                      </p>
                     </td>
 
-                    <td className="px-4 py-3 text-gray-600">
-                      {sale.user?.name ?? "—"}
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-600">
+                          {(sale.user?.name ?? "—").charAt(0).toUpperCase()}
+                        </div>
+
+                        <span className="whitespace-nowrap text-slate-600">
+                          {sale.user?.name ?? "—"}
+                        </span>
+                      </div>
                     </td>
 
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-5 py-4 text-center">
                       <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
                           sale.payment_method === "cash"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-orange-100 text-orange-700"
+                            ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                            : "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200"
                         }`}
                       >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            sale.payment_method === "cash"
+                              ? "bg-emerald-500"
+                              : "bg-orange-500"
+                          }`}
+                        />
                         {sale.payment_method === "cash" ? "Cash" : "Charge"}
                       </span>
                     </td>
 
-                    <td className="px-4 py-3 text-right font-medium">
+                    <td className="px-5 py-4 text-right font-semibold text-slate-900">
                       {formatCurrency(sale.total)}
                     </td>
 
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-5 py-4 text-right text-slate-600">
                       {formatCurrency(sale.total_cost ?? 0)}
                     </td>
 
-                    <td className="px-4 py-3 text-right font-medium text-green-600">
+                    <td className="px-5 py-4 text-right font-semibold text-emerald-600">
                       {formatCurrency(sale.gross_profit ?? 0)}
                     </td>
 
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-5 py-4 text-right font-medium text-slate-700">
                       {Number(sale.gross_margin ?? 0).toFixed(2)}%
                     </td>
 
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-5 py-4 text-center">
                       <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusClass(
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
                           sale.status,
                         )}`}
                       >
@@ -1161,12 +1859,27 @@ export default function Sales() {
                       </span>
                     </td>
 
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-5 py-4 text-center">
                       <button
                         type="button"
                         onClick={() => setSelectedSale(sale)}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                        className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                       >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          className="h-4 w-4"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
+                          />
+                          <circle cx="12" cy="12" r="2.5" />
+                        </svg>
                         View
                       </button>
                     </td>
@@ -1179,33 +1892,66 @@ export default function Sales() {
 
         {/* Pagination */}
         {!loading && !error && lastPage > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3">
-            <div className="text-sm text-gray-500">
-              {totalTransactions} transaction
+          <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-500">
+              <span className="font-semibold text-slate-700">
+                {totalTransactions.toLocaleString()}
+              </span>{" "}
+              transaction
               {totalTransactions !== 1 ? "s" : ""}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 sm:justify-end">
               <button
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((current) => current - 1)}
-                className="rounded-lg border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-4 w-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m15 18-6-6 6-6"
+                  />
+                </svg>
                 Previous
               </button>
 
-              <span className="text-sm text-gray-600">
-                Page {page} of {lastPage}
+              <span className="whitespace-nowrap rounded-xl bg-white px-3.5 py-2 text-sm font-medium text-slate-600">
+                Page{" "}
+                <span className="font-semibold text-slate-900">{page}</span> of{" "}
+                <span className="font-semibold text-slate-900">{lastPage}</span>
               </span>
 
               <button
                 type="button"
                 disabled={page >= lastPage}
                 onClick={() => setPage((current) => current + 1)}
-                className="rounded-lg border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-4 w-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m9 18 6-6-6-6"
+                  />
+                </svg>
               </button>
             </div>
           </div>
@@ -1214,280 +1960,507 @@ export default function Sales() {
 
       {/* View Sale Modal */}
       {selectedSale && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-6 py-4">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800">
-                  Sale Details
-                </h2>
-                <p className="text-sm text-gray-500">
-                  {selectedSale.sale_number}
-                </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:p-5">
+          <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-5 w-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8 9h8M8 13h5"
+                    />
+                  </svg>
+                </div>
+
+                <div className="min-w-0">
+                  <h2 className="truncate text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+                    Sale Details
+                  </h2>
+
+                  <p className="truncate text-xs text-slate-400 sm:text-sm">
+                    {selectedSale.sale_number} • {selectedSale.invoice_number}
+                  </p>
+                </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => setSelectedSale(null)}
-                className="rounded-lg px-3 py-1 text-xl text-gray-500 hover:bg-gray-100"
+                disabled={requestLoading}
+                aria-label="Close"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                ×
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m7 7 10 10M17 7 7 17"
+                  />
+                </svg>
               </button>
             </div>
 
-            <div className="space-y-6 p-6">
-              {/* Sale Information */}
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+            <div className="max-h-[calc(92vh-145px)] overflow-y-auto">
+              <div className="space-y-6 p-5 sm:p-6">
+                {/* Sale Information */}
                 <div>
-                  <p className="text-xs text-gray-500">Sale #</p>
-                  <p className="font-medium">{selectedSale.sale_number}</p>
+                  <div className="mb-3">
+                    <h3 className="text-sm font-semibold text-slate-800">
+                      Sale Information
+                    </h3>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      Basic information about this transaction.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        Sale #
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">
+                        {selectedSale.sale_number}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        Invoice #
+                      </p>
+                      <p className="mt-1 truncate text-sm font-semibold text-slate-800">
+                        {selectedSale.invoice_number}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        Date
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">
+                        {formatDate(selectedSale.sale_date)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        Cashier
+                      </p>
+                      <p className="mt-1 truncate text-sm font-semibold text-slate-800">
+                        {selectedSale.user?.name ?? "—"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        Type
+                      </p>
+
+                      <span
+                        className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                          selectedSale.status,
+                        )}`}
+                      >
+                        {getStatusLabel(selectedSale.status)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-xs text-gray-500">Invoice #</p>
-                  <p className="font-medium">{selectedSale.invoice_number}</p>
+                {/* Customer */}
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-5 w-5"
+                      >
+                        <circle cx="12" cy="8" r="3" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 20a7 7 0 0 1 14 0"
+                        />
+                      </svg>
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        Customer
+                      </p>
+
+                      <p className="mt-0.5 text-sm font-semibold text-slate-800">
+                        {selectedSale.customer?.name ?? "Walk-in Customer"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
+                {/* Items */}
                 <div>
-                  <p className="text-xs text-gray-500">Date</p>
-                  <p className="font-medium">
-                    {formatDate(selectedSale.sale_date)}
-                  </p>
+                  <div className="mb-3">
+                    <h3 className="text-sm font-semibold text-slate-800">
+                      Items
+                    </h3>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      Products included in this sale.
+                    </p>
+                  </div>
+
+                  <div className="overflow-hidden rounded-xl border border-slate-200">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-slate-50/70">
+                          <tr className="border-b border-slate-100">
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Product
+                            </th>
+
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Qty
+                            </th>
+
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Unit Price
+                            </th>
+
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Discount
+                            </th>
+
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Total
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {selectedSale.items.map((item) => (
+                            <tr
+                              key={item.id}
+                              className="border-b border-slate-100 last:border-b-0"
+                            >
+                              <td className="px-4 py-3.5">
+                                <div className="font-semibold text-slate-800">
+                                  {item.product?.name ?? "Unknown Product"}
+                                </div>
+
+                                {item.product?.sku && (
+                                  <div className="mt-0.5 text-xs text-slate-400">
+                                    SKU: {item.product.sku}
+                                  </div>
+                                )}
+                              </td>
+
+                              <td className="px-4 py-3.5 text-right text-slate-600">
+                                {Number(item.quantity)}
+                              </td>
+
+                              <td className="px-4 py-3.5 text-right text-slate-600">
+                                {formatCurrency(item.unit_price)}
+                              </td>
+
+                              <td className="px-4 py-3.5 text-right text-slate-600">
+                                {formatCurrency(item.discount)}
+                              </td>
+
+                              <td className="px-4 py-3.5 text-right font-semibold text-slate-900">
+                                {formatCurrency(item.total)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
 
+                {/* FIFO Cost Breakdown */}
                 <div>
-                  <p className="text-xs text-gray-500">Cashier</p>
-                  <p className="font-medium">
-                    {selectedSale.user?.name ?? "—"}
-                  </p>
-                </div>
+                  <div className="mb-3 flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-5 w-5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M4 7h16M4 12h16M4 17h10"
+                        />
+                      </svg>
+                    </div>
 
-                <div>
-                  <p className="text-xs text-gray-500">Type</p>
-                  <span
-                    className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusClass(
-                      selectedSale.status,
-                    )}`}
-                  >
-                    {getStatusLabel(selectedSale.status)}
-                  </span>
-                </div>
-              </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800">
+                        FIFO Cost Breakdown
+                      </h3>
 
-              {/* Customer */}
-              <div>
-                <p className="text-xs text-gray-500">Customer</p>
-                <p className="font-medium">
-                  {selectedSale.customer?.name ?? "Walk-in Customer"}
-                </p>
-              </div>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        Inventory cost layers used for this sale.
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Items */}
-              <div>
-                <h3 className="mb-3 text-base font-semibold text-gray-800">
-                  Items
-                </h3>
+                  <div className="space-y-3">
+                    {(selectedSale.items as SaleItemWithCosts[]).map((item) => (
+                      <div
+                        key={item.id}
+                        className="overflow-hidden rounded-xl border border-slate-200"
+                      >
+                        <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-3">
+                          <div className="font-semibold text-slate-800">
+                            {item.product?.name ?? "Unknown Product"}
+                          </div>
 
-                <div className="overflow-x-auto rounded-lg border">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left">Product</th>
-                        <th className="px-4 py-3 text-right">Qty</th>
-                        <th className="px-4 py-3 text-right">Unit Price</th>
-                        <th className="px-4 py-3 text-right">Discount</th>
-                        <th className="px-4 py-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {selectedSale.items.map((item) => (
-                        <tr key={item.id} className="border-t">
-                          <td className="px-4 py-3">
-                            <div className="font-medium">
-                              {item.product?.name ?? "Unknown Product"}
+                          {item.product?.sku && (
+                            <div className="mt-0.5 text-xs text-slate-400">
+                              SKU: {item.product.sku}
                             </div>
-
-                            {item.product?.sku && (
-                              <div className="text-xs text-gray-500">
-                                SKU: {item.product.sku}
-                              </div>
-                            )}
-                          </td>
-
-                          <td className="px-4 py-3 text-right">
-                            {Number(item.quantity)}
-                          </td>
-
-                          <td className="px-4 py-3 text-right">
-                            {formatCurrency(item.unit_price)}
-                          </td>
-
-                          <td className="px-4 py-3 text-right">
-                            {formatCurrency(item.discount)}
-                          </td>
-
-                          <td className="px-4 py-3 text-right font-medium">
-                            {formatCurrency(item.total)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* FIFO Cost Breakdown */}
-              <div>
-                <div className="mb-3">
-                  <h3 className="text-base font-semibold text-gray-800">
-                    FIFO Cost Breakdown
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    Inventory cost layers used for this sale.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  {(selectedSale.items as SaleItemWithCosts[]).map((item) => (
-                    <div
-                      key={item.id}
-                      className="overflow-hidden rounded-lg border"
-                    >
-                      <div className="border-b bg-gray-50 px-4 py-3">
-                        <div className="font-medium text-gray-800">
-                          {item.product?.name ?? "Unknown Product"}
+                          )}
                         </div>
 
-                        {item.product?.sku && (
-                          <div className="text-xs text-gray-500">
-                            SKU: {item.product.sku}
+                        {item.costs && item.costs.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-slate-100">
+                                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                    Qty
+                                  </th>
+
+                                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                    Unit Cost
+                                  </th>
+
+                                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                    Total Cost
+                                  </th>
+
+                                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                    Reference
+                                  </th>
+                                </tr>
+                              </thead>
+
+                              <tbody>
+                                {item.costs.map((cost) => (
+                                  <tr
+                                    key={cost.id}
+                                    className="border-b border-slate-100 last:border-b-0"
+                                  >
+                                    <td className="px-4 py-3 text-right text-slate-600">
+                                      {Number(cost.quantity)}
+                                    </td>
+
+                                    <td className="px-4 py-3 text-right text-slate-600">
+                                      {formatCurrency(cost.unit_cost)}
+                                    </td>
+
+                                    <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                                      {formatCurrency(cost.total_cost)}
+                                    </td>
+
+                                    <td className="px-4 py-3 text-left text-slate-500">
+                                      {getReference(cost)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="px-4 py-4 text-sm text-slate-400">
+                            No FIFO cost records found.
                           </div>
                         )}
                       </div>
+                    ))}
+                  </div>
+                </div>
 
-                      {item.costs && item.costs.length > 0 ? (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full text-sm">
-                            <thead>
-                              <tr className="border-b">
-                                <th className="px-4 py-3 text-right">Qty</th>
-                                <th className="px-4 py-3 text-right">
-                                  Unit Cost
-                                </th>
-                                <th className="px-4 py-3 text-right">
-                                  Total Cost
-                                </th>
-                                <th className="px-4 py-3 text-left">
-                                  Reference
-                                </th>
-                              </tr>
-                            </thead>
-
-                            <tbody>
-                              {item.costs.map((cost) => (
-                                <tr
-                                  key={cost.id}
-                                  className="border-b last:border-b-0"
-                                >
-                                  <td className="px-4 py-3 text-right">
-                                    {Number(cost.quantity)}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-right">
-                                    {formatCurrency(cost.unit_cost)}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-right font-medium">
-                                    {formatCurrency(cost.total_cost)}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-left text-gray-600">
-                                    {getReference(cost)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div className="px-4 py-4 text-sm text-gray-500">
-                          No FIFO cost records found.
-                        </div>
-                      )}
+                {/* Totals */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-5 w-5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M8 9h8M8 13h4"
+                        />
+                      </svg>
                     </div>
-                  ))}
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800">
+                        Transaction Summary
+                      </h3>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        Financial breakdown of this sale.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="ml-auto w-full max-w-md space-y-2.5 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-500">Subtotal</span>
+                      <span className="font-medium text-slate-700">
+                        {formatCurrency(selectedSale.subtotal)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-500">Discount</span>
+                      <span className="font-medium text-slate-700">
+                        {formatCurrency(selectedSale.discount)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-500">Tax</span>
+                      <span className="font-medium text-slate-700">
+                        {formatCurrency(selectedSale.tax)}
+                      </span>
+                    </div>
+
+                    <div className="my-3 border-t border-slate-200" />
+
+                    <div className="flex justify-between gap-4 text-base">
+                      <span className="font-semibold text-slate-800">
+                        Total
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {formatCurrency(selectedSale.total)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-500">COGS</span>
+                      <span className="font-medium text-slate-700">
+                        {formatCurrency(selectedSale.total_cost ?? 0)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between gap-4">
+                      <span className="font-medium text-emerald-600">
+                        Gross Profit
+                      </span>
+                      <span className="font-semibold text-emerald-600">
+                        {formatCurrency(selectedSale.gross_profit ?? 0)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-500">Gross Margin</span>
+                      <span className="font-semibold text-slate-700">
+                        {Number(selectedSale.gross_margin ?? 0).toFixed(2)}%
+                      </span>
+                    </div>
+
+                    <div className="my-3 border-t border-slate-200" />
+
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-500">Amount Paid</span>
+                      <span className="font-medium text-slate-700">
+                        {formatCurrency(selectedSale.amount_paid)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-500">Change</span>
+                      <span className="font-semibold text-slate-800">
+                        {formatCurrency(selectedSale.change_amount)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Notes */}
+                {selectedSale.notes && (
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          className="h-5 w-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M8 9h8M8 13h6"
+                          />
+                        </svg>
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                          Notes
+                        </p>
+
+                        <p className="mt-1 rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+                          {selectedSale.notes}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {/* Totals */}
-              <div className="flex justify-end">
-                <div className="w-full max-w-sm space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Subtotal</span>
-                    <span>{formatCurrency(selectedSale.subtotal)}</span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Discount</span>
-                    <span>{formatCurrency(selectedSale.discount)}</span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Tax</span>
-                    <span>{formatCurrency(selectedSale.tax)}</span>
-                  </div>
-
-                  <div className="flex justify-between border-t pt-2 text-base font-bold">
-                    <span>Total</span>
-                    <span>{formatCurrency(selectedSale.total)}</span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">COGS</span>
-                    <span>{formatCurrency(selectedSale.total_cost ?? 0)}</span>
-                  </div>
-
-                  <div className="flex justify-between font-medium text-green-600">
-                    <span>Gross Profit</span>
-                    <span>
-                      {formatCurrency(selectedSale.gross_profit ?? 0)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Gross Margin</span>
-                    <span>
-                      {Number(selectedSale.gross_margin ?? 0).toFixed(2)}%
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between border-t pt-2">
-                    <span className="text-gray-500">Amount Paid</span>
-                    <span>{formatCurrency(selectedSale.amount_paid)}</span>
-                  </div>
-
-                  <div className="flex justify-between font-medium">
-                    <span className="text-gray-500">Change</span>
-                    <span>{formatCurrency(selectedSale.change_amount)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {selectedSale.notes && (
-                <div>
-                  <p className="text-xs text-gray-500">Notes</p>
-                  <p className="mt-1 rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
-                    {selectedSale.notes}
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-between border-t px-6 py-4">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div className="flex flex-wrap items-center gap-2">
                 {/* Cashier - Request Approval */}
                 {user?.role === "cashier" &&
                   selectedSale.status === "completed" &&
@@ -1498,7 +2471,8 @@ export default function Sales() {
 
                     if (actionRequest?.status === "pending") {
                       return (
-                        <span className="rounded-lg bg-yellow-100 px-4 py-2 text-sm font-medium text-yellow-700">
+                        <span className="inline-flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+                          <span className="h-2 w-2 rounded-full bg-amber-500" />
                           {actionRequest.action_type === "void"
                             ? "Void Request Pending"
                             : "Refund Request Pending"}
@@ -1509,23 +2483,58 @@ export default function Sales() {
                     if (actionRequest?.status === "rejected") {
                       return (
                         <>
-                          <span className="rounded-lg bg-red-100 px-4 py-2 text-sm font-medium text-red-700">
+                          <span className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 ring-1 ring-inset ring-red-200">
+                            <span className="h-2 w-2 rounded-full bg-red-500" />
                             Request Rejected
                           </span>
 
                           <button
                             type="button"
                             onClick={() => openRequestModal("void")}
-                            className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50"
                           >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              className="h-4 w-4"
+                            >
+                              <circle cx="12" cy="12" r="9" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="m9 9 6 6M15 9l-6 6"
+                              />
+                            </svg>
                             Void
                           </button>
 
                           <button
                             type="button"
                             onClick={() => openRequestModal("refund")}
-                            className="rounded-lg border border-yellow-300 px-4 py-2 text-sm font-medium text-yellow-600 hover:bg-yellow-50"
+                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 text-sm font-semibold text-amber-600 transition hover:bg-amber-50"
                           >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              className="h-4 w-4"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M20 12a8 8 0 1 1-2.34-5.66"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M20 5v5h-5"
+                              />
+                            </svg>
                             Refund
                           </button>
                         </>
@@ -1537,23 +2546,57 @@ export default function Sales() {
                         <button
                           type="button"
                           onClick={() => openRequestModal("void")}
-                          className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                          className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50"
                         >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            className="h-4 w-4"
+                          >
+                            <circle cx="12" cy="12" r="9" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m9 9 6 6M15 9l-6 6"
+                            />
+                          </svg>
                           Void
                         </button>
 
                         <button
                           type="button"
                           onClick={() => openRequestModal("refund")}
-                          className="rounded-lg border border-yellow-300 px-4 py-2 text-sm font-medium text-yellow-600 hover:bg-yellow-50"
+                          className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 text-sm font-semibold text-amber-600 transition hover:bg-amber-50"
                         >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            className="h-4 w-4"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M20 12a8 8 0 1 1-2.34-5.66"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M20 5v5h-5"
+                            />
+                          </svg>
                           Refund
                         </button>
                       </>
                     );
                   })()}
 
-                {/* Manager/Admin - Direct Void */}
+                {/* Manager/Admin - Direct Actions */}
                 {(user?.role === "admin" || user?.role === "manager") &&
                   selectedSale.status === "completed" && (
                     <>
@@ -1561,8 +2604,23 @@ export default function Sales() {
                         type="button"
                         onClick={() => handleDirectAction("void")}
                         disabled={requestLoading}
-                        className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          className="h-4 w-4"
+                        >
+                          <circle cx="12" cy="12" r="9" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="m9 9 6 6M15 9l-6 6"
+                          />
+                        </svg>
                         Void
                       </button>
 
@@ -1583,21 +2641,74 @@ export default function Sales() {
                           setRefundQuantities(quantities);
                         }}
                         disabled={requestLoading}
-                        className="rounded-lg border border-yellow-300 px-4 py-2 text-sm font-medium text-yellow-600 hover:bg-yellow-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 text-sm font-semibold text-amber-600 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          className="h-4 w-4"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M20 12a8 8 0 1 1-2.34-5.66"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M20 5v5h-5"
+                          />
+                        </svg>
                         Refund
                       </button>
                     </>
                   )}
 
                 {requestSuccess && (
-                  <span className="rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-700">
+                  <span className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m5 12 4 4L19 6"
+                      />
+                    </svg>
                     {requestSuccess}
                   </span>
                 )}
 
                 {requestError && !requestAction && (
-                  <span className="rounded-lg bg-red-100 px-4 py-2 text-sm font-medium text-red-700">
+                  <span className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 ring-1 ring-inset ring-red-200">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 9v4"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 17h.01"
+                      />
+                      <circle cx="12" cy="12" r="9" />
+                    </svg>
                     {requestError}
                   </span>
                 )}
@@ -1607,7 +2718,7 @@ export default function Sales() {
                 type="button"
                 onClick={() => setSelectedSale(null)}
                 disabled={requestLoading}
-                className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Close
               </button>
@@ -1618,221 +2729,378 @@ export default function Sales() {
 
       {/* Void / Refund Modal */}
       {selectedSale && requestAction && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-4xl rounded-xl bg-white shadow-xl">
-            <div className="border-b px-6 py-4">
-              <h2 className="text-xl font-bold text-gray-800">
-                {user?.role === "cashier"
-                  ? requestAction === "void"
-                    ? "Request Void Approval"
-                    : "Request Refund Approval"
-                  : requestAction === "void"
-                    ? "Void Sale"
-                    : "Refund Sale"}
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-500">
-                {user?.role === "cashier"
-                  ? "Submit this request to a Manager or Admin for approval."
-                  : requestAction === "void"
-                    ? "Confirm that you want to void this completed sale."
-                    : "Select the items and quantities to refund."}
-              </p>
-            </div>
-
-            <div className="space-y-4 p-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500">Sale #</p>
-                  <p className="font-medium text-gray-800">
-                    {selectedSale.sale_number}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500">Amount</p>
-                  <p className="font-medium text-gray-800">
-                    {formatCurrency(selectedSale.total)}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="mb-1 text-xs text-gray-500">Action</p>
-                <span
-                  className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:p-5">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+              <div className="flex min-w-0 items-start gap-3">
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                     requestAction === "void"
-                      ? "bg-red-100 text-red-700"
-                      : "bg-yellow-100 text-yellow-700"
+                      ? "bg-red-50 text-red-600"
+                      : "bg-amber-50 text-amber-600"
                   }`}
                 >
-                  {requestAction === "void" ? "Void" : "Refund"}
-                </span>
+                  {requestAction === "void" ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-5 w-5"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m9 9 6 6M15 9l-6 6"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-5 w-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M20 12a8 8 0 1 1-2.34-5.66"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M20 5v5h-5"
+                      />
+                    </svg>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+                    {user?.role === "cashier"
+                      ? requestAction === "void"
+                        ? "Request Void Approval"
+                        : "Request Refund Approval"
+                      : requestAction === "void"
+                        ? "Void Sale"
+                        : "Refund Sale"}
+                  </h2>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
+                    {user?.role === "cashier"
+                      ? "Submit this request to a Manager or Admin for approval."
+                      : requestAction === "void"
+                        ? "Confirm that you want to void this completed sale."
+                        : "Select the items and quantities to refund."}
+                  </p>
+                </div>
               </div>
 
-              {requestAction === "refund" && (
-                <div>
-                  <div className="mb-2">
-                    <p className="text-sm font-medium text-gray-700">
-                      Items to Refund
-                    </p>
-
-                    <p className="text-xs text-gray-500">
-                      Enter the quantity to refund for each item.
-                    </p>
-                  </div>
-
-                  <div className="overflow-hidden rounded-lg border">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-3 text-left font-medium text-gray-600">
-                            Product
-                          </th>
-
-                          <th className="px-3 py-3 text-right font-medium text-gray-600">
-                            Sold
-                          </th>
-
-                          <th className="px-3 py-3 text-right font-medium text-gray-600">
-                            Refunded
-                          </th>
-
-                          <th className="px-3 py-3 text-right font-medium text-gray-600">
-                            Remaining
-                          </th>
-
-                          <th className="px-3 py-3 text-right font-medium text-gray-600">
-                            Refund Qty
-                          </th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {selectedSale.items.map((item) => {
-                          const soldQuantity = Number(item.quantity);
-                          const refundedQuantity = Number(
-                            item.refunded_quantity ?? 0,
-                          );
-                          const remainingQuantity = Math.max(
-                            0,
-                            soldQuantity - refundedQuantity,
-                          );
-
-                          const refundQuantity = Number(
-                            refundQuantities[item.id] ?? 0,
-                          );
-
-                          return (
-                            <tr key={item.id} className="border-t">
-                              <td className="px-3 py-3">
-                                <div className="font-medium text-gray-800">
-                                  {item.product?.name ?? "Unknown Product"}
-                                </div>
-
-                                {item.product?.sku && (
-                                  <div className="text-xs text-gray-500">
-                                    SKU: {item.product.sku}
-                                  </div>
-                                )}
-                              </td>
-
-                              <td className="px-3 py-3 text-right">
-                                {soldQuantity}
-                              </td>
-
-                              <td className="px-3 py-3 text-right text-gray-500">
-                                {refundedQuantity}
-                              </td>
-
-                              <td className="px-3 py-3 text-right font-medium">
-                                {remainingQuantity}
-                              </td>
-
-                              <td className="px-3 py-3 text-right">
-                                {remainingQuantity > 0 ? (
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max={remainingQuantity}
-                                    step="0.001"
-                                    value={refundQuantity}
-                                    onFocus={selectAllOnFocus}
-                                    onChange={(e) => {
-                                      const value = Number(e.target.value);
-
-                                      setRefundQuantities((current) => ({
-                                        ...current,
-                                        [item.id]: Math.max(
-                                          0,
-                                          Math.min(
-                                            value || 0,
-                                            remainingQuantity,
-                                          ),
-                                        ),
-                                      }));
-                                    }}
-                                    disabled={requestLoading}
-                                    className="w-24 rounded-lg border px-3 py-2 text-right text-sm outline-none focus:border-yellow-500 disabled:bg-gray-100"
-                                  />
-                                ) : (
-                                  <span className="text-xs font-medium text-gray-400">
-                                    Fully Refunded
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Reason - Cashier Request Only */}
-              {user?.role === "cashier" && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Reason
-                  </label>
-
-                  <textarea
-                    value={requestReason}
-                    onChange={(e) => setRequestReason(e.target.value)}
-                    onFocus={selectAllOnFocus}
-                    rows={4}
-                    maxLength={1000}
-                    placeholder="Enter reason for this request..."
-                    className="w-full rounded-lg border px-4 py-2 text-sm outline-none focus:border-blue-500"
-                    disabled={requestLoading}
-                  />
-
-                  <div className="mt-1 text-right text-xs text-gray-400">
-                    {requestReason.length}/1000
-                  </div>
-                </div>
-              )}
-
-              {requestError && (
-                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                  {requestError}
-                </div>
-              )}
-
-              {requestSuccess && (
-                <div className="rounded-lg bg-green-50 p-3 text-sm text-green-600">
-                  {requestSuccess}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2 border-t px-6 py-4">
               <button
                 type="button"
                 onClick={closeRequestModal}
                 disabled={requestLoading}
-                className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Close"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m7 7 10 10M17 7 7 17"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="max-h-[calc(92vh-145px)] overflow-y-auto">
+              <div className="space-y-5 p-5 sm:p-6">
+                {/* Transaction Summary */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                      Sale #
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-800">
+                      {selectedSale.sale_number}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                      Amount
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">
+                      {formatCurrency(selectedSale.total)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                      Action
+                    </p>
+
+                    <span
+                      className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                        requestAction === "void"
+                          ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200"
+                          : "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200"
+                      }`}
+                    >
+                      {requestAction === "void" ? "Void" : "Refund"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Refund Items */}
+                {requestAction === "refund" && (
+                  <div>
+                    <div className="mb-3 flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          className="h-5 w-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M20 12a8 8 0 1 1-2.34-5.66"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M20 5v5h-5"
+                          />
+                        </svg>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">
+                          Items to Refund
+                        </p>
+
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          Enter the quantity to refund for each item.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-xl border border-slate-200">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-[720px] w-full text-sm">
+                          <thead className="bg-slate-50/70">
+                            <tr className="border-b border-slate-100">
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Product
+                              </th>
+
+                              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Sold
+                              </th>
+
+                              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Refunded
+                              </th>
+
+                              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Remaining
+                              </th>
+
+                              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Refund Qty
+                              </th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {selectedSale.items.map((item) => {
+                              const soldQuantity = Number(item.quantity);
+                              const refundedQuantity = Number(
+                                item.refunded_quantity ?? 0,
+                              );
+                              const remainingQuantity = Math.max(
+                                0,
+                                soldQuantity - refundedQuantity,
+                              );
+
+                              const refundQuantity = Number(
+                                refundQuantities[item.id] ?? 0,
+                              );
+
+                              return (
+                                <tr
+                                  key={item.id}
+                                  className="border-b border-slate-100 last:border-b-0"
+                                >
+                                  <td className="px-4 py-3.5">
+                                    <div className="font-semibold text-slate-800">
+                                      {item.product?.name ?? "Unknown Product"}
+                                    </div>
+
+                                    {item.product?.sku && (
+                                      <div className="mt-0.5 text-xs text-slate-400">
+                                        SKU: {item.product.sku}
+                                      </div>
+                                    )}
+                                  </td>
+
+                                  <td className="px-4 py-3.5 text-right text-slate-600">
+                                    {soldQuantity}
+                                  </td>
+
+                                  <td className="px-4 py-3.5 text-right text-slate-500">
+                                    {refundedQuantity}
+                                  </td>
+
+                                  <td className="px-4 py-3.5 text-right font-semibold text-slate-800">
+                                    {remainingQuantity}
+                                  </td>
+
+                                  <td className="px-4 py-3.5 text-right">
+                                    {remainingQuantity > 0 ? (
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max={remainingQuantity}
+                                        step="0.001"
+                                        value={refundQuantity}
+                                        onFocus={selectAllOnFocus}
+                                        onChange={(e) => {
+                                          const value = Number(e.target.value);
+
+                                          setRefundQuantities((current) => ({
+                                            ...current,
+                                            [item.id]: Math.max(
+                                              0,
+                                              Math.min(
+                                                value || 0,
+                                                remainingQuantity,
+                                              ),
+                                            ),
+                                          }));
+                                        }}
+                                        disabled={requestLoading}
+                                        className="h-10 w-24 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-medium text-slate-700 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100 disabled:bg-slate-100"
+                                      />
+                                    ) : (
+                                      <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-400">
+                                        Fully Refunded
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reason - Cashier Request Only */}
+                {user?.role === "cashier" && (
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="text-sm font-semibold text-slate-700">
+                        Reason
+                      </label>
+
+                      <span className="text-xs text-slate-400">
+                        {requestReason.length}/1000
+                      </span>
+                    </div>
+
+                    <textarea
+                      value={requestReason}
+                      onChange={(e) => setRequestReason(e.target.value)}
+                      onFocus={selectAllOnFocus}
+                      rows={4}
+                      maxLength={1000}
+                      placeholder="Enter reason for this request..."
+                      className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      disabled={requestLoading}
+                    />
+                  </div>
+                )}
+
+                {requestError && (
+                  <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-4 w-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 9v4"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 17h.01"
+                        />
+                        <circle cx="12" cy="12" r="9" />
+                      </svg>
+                    </div>
+
+                    <p className="pt-0.5">{requestError}</p>
+                  </div>
+                )}
+
+                {requestSuccess && (
+                  <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-4 w-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m5 12 4 4L19 6"
+                        />
+                      </svg>
+                    </div>
+
+                    <p className="pt-0.5">{requestSuccess}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <button
+                type="button"
+                onClick={closeRequestModal}
+                disabled={requestLoading}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1849,13 +3117,65 @@ export default function Sales() {
                         (quantity) => Number(quantity) > 0,
                       ))
                   }
-                  className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
+                  className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
                     requestAction === "void"
                       ? "bg-red-600 hover:bg-red-700"
-                      : "bg-yellow-600 hover:bg-yellow-700"
+                      : "bg-amber-600 hover:bg-amber-700"
                   }`}
                 >
-                  {requestLoading ? "Submitting..." : "Request Approval"}
+                  {requestLoading ? (
+                    <>
+                      <svg
+                        className="h-4 w-4 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="9"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                        />
+                        <path
+                          className="opacity-90"
+                          fill="currentColor"
+                          d="M12 3a9 9 0 0 1 9 9h-2.5a6.5 6.5 0 0 0-6.5-6.5V3Z"
+                        />
+                      </svg>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-4 w-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 16V4"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m8 8 4-4 4 4"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 20h14"
+                        />
+                      </svg>
+                      Request Approval
+                    </>
+                  )}
                 </button>
               ) : (
                 <button
@@ -1867,9 +3187,56 @@ export default function Sales() {
                       (quantity) => Number(quantity) > 0,
                     )
                   }
-                  className="rounded-lg bg-yellow-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 hover:bg-yellow-700"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {requestLoading ? "Processing..." : "Process Refund"}
+                  {requestLoading ? (
+                    <>
+                      <svg
+                        className="h-4 w-4 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="9"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                        />
+                        <path
+                          className="opacity-90"
+                          fill="currentColor"
+                          d="M12 3a9 9 0 0 1 9 9h-2.5a6.5 6.5 0 0 0-6.5-6.5V3Z"
+                        />
+                      </svg>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-4 w-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M20 12a8 8 0 1 1-2.34-5.66"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M20 5v5h-5"
+                        />
+                      </svg>
+                      Process Refund
+                    </>
+                  )}
                 </button>
               )}
             </div>

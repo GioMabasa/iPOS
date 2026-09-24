@@ -209,111 +209,172 @@ export default function Dashboard() {
   */
 
   return (
-    <div className="min-h-full bg-gray-50 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-full bg-slate-50 p-4 sm:p-6 lg:p-8">
       {/* ==========================================================
-          HEADER
+          STICKY HEADER
       ========================================================== */}
 
-      <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        {/* TITLE */}
+      <div className="sticky top-0 z-30 -mx-4 -mt-4 mb-7 border-b border-slate-200 bg-slate-50 px-4 py-4 sm:-mx-6 sm:-mt-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:px-8">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          {/* ========================================================
+              TITLE
+          ======================================================== */}
 
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Dashboard
-          </h1>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Overview of your POS performance.
-          </p>
-        </div>
-
-        {/* ========================================================
-            REPORT FILTER
-        ======================================================== */}
-
-        <div className="flex flex-col gap-3">
           <div>
-            <label
-              htmlFor="report-period"
-              className="mb-1.5 block text-sm font-medium text-gray-700"
-            >
-              Report Period
-            </label>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 13.5 9 7l4 4 8-8"
+                  />
 
-            <select
-              id="report-period"
-              value={period}
-              onChange={(event) => handlePeriodChange(event.target.value)}
-              className="h-10 w-full min-w-[190px] rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            >
-              <option value="today">Today</option>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 7v5h-5"
+                  />
 
-              <option value="yesterday">Yesterday</option>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 19h16"
+                  />
+                </svg>
+              </div>
 
-              <option value="this_week">This Week</option>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  Dashboard
+                </h1>
 
-              <option value="this_month">This Month</option>
-
-              <option value="custom">Custom</option>
-            </select>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  Overview of your POS performance.
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* ======================================================
-              CUSTOM DATES
-          ====================================================== */}
+          {/* ========================================================
+              REPORT FILTER
+          ======================================================== */}
 
-          {period === "custom" && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              {/* FROM */}
-
-              <div>
-                <label
-                  htmlFor="report-from"
-                  className="mb-1.5 block text-sm font-medium text-gray-700"
-                >
-                  From
-                </label>
-
-                <input
-                  id="report-from"
-                  type="date"
-                  value={from}
-                  onChange={(event) => setFrom(event.target.value)}
-                  className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                />
-              </div>
-
-              {/* TO */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+              {/* PERIOD */}
 
               <div>
                 <label
-                  htmlFor="report-to"
-                  className="mb-1.5 block text-sm font-medium text-gray-700"
+                  htmlFor="report-period"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500"
                 >
-                  To
+                  Report Period
                 </label>
 
-                <input
-                  id="report-to"
-                  type="date"
-                  value={to}
-                  onChange={(event) => setTo(event.target.value)}
-                  className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                />
+                <select
+                  id="report-period"
+                  value={period}
+                  onChange={(event) => handlePeriodChange(event.target.value)}
+                  className="h-10 w-full min-w-[190px] rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                >
+                  <option value="today">Today</option>
+
+                  <option value="yesterday">Yesterday</option>
+
+                  <option value="this_week">This Week</option>
+
+                  <option value="this_month">This Month</option>
+
+                  <option value="custom">Custom</option>
+                </select>
               </div>
 
-              {/* APPLY */}
+              {/* ======================================================
+                  CUSTOM DATES
+              ====================================================== */}
 
-              <button
-                type="button"
-                onClick={handleCustomApply}
-                disabled={loading}
-                className="h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Apply
-              </button>
+              {period === "custom" && (
+                <>
+                  {/* FROM */}
+
+                  <div>
+                    <label
+                      htmlFor="report-from"
+                      className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    >
+                      From
+                    </label>
+
+                    <input
+                      id="report-from"
+                      type="date"
+                      value={from}
+                      onChange={(event) => setFrom(event.target.value)}
+                      className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                    />
+                  </div>
+
+                  {/* TO */}
+
+                  <div>
+                    <label
+                      htmlFor="report-to"
+                      className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    >
+                      To
+                    </label>
+
+                    <input
+                      id="report-to"
+                      type="date"
+                      value={to}
+                      onChange={(event) => setTo(event.target.value)}
+                      className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                    />
+                  </div>
+
+                  {/* APPLY */}
+
+                  <button
+                    type="button"
+                    onClick={handleCustomApply}
+                    disabled={loading}
+                    className="flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 hover:shadow disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 12h14"
+                      />
+
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m13 6 6 6-6 6"
+                      />
+                    </svg>
+                    Apply
+                  </button>
+                </>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -322,13 +383,40 @@ export default function Dashboard() {
       ========================================================== */}
 
       {error && (
-        <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <span>{error}</span>
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm text-red-700 shadow-sm">
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="h-4 w-4"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4" />
+
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 17h.01"
+              />
+
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.3 3.6 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0Z"
+              />
+            </svg>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-red-800">{error}</p>
+          </div>
 
           <button
             type="button"
             onClick={() => loadDashboard(period, from, to)}
-            className="font-semibold underline hover:no-underline"
+            className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100"
           >
             Retry
           </button>
@@ -340,14 +428,25 @@ export default function Dashboard() {
       ========================================================== */}
 
       {loading ? (
-        <div className="flex min-h-[300px] items-center justify-center">
-          <div className="flex items-center gap-3 text-sm text-gray-500">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600" />
-            Loading dashboard...
+        <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
+            </div>
+
+            <div className="text-center">
+              <p className="text-sm font-semibold text-slate-700">
+                Loading dashboard
+              </p>
+
+              <p className="mt-1 text-xs text-slate-400">
+                Please wait while we load your reports...
+              </p>
+            </div>
           </div>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-7">
           {/* ======================================================
               SALES OVERVIEW
           ====================================================== */}
@@ -365,7 +464,7 @@ export default function Dashboard() {
           ====================================================== */}
 
           {!isCashier && (
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-7 lg:grid-cols-2">
               {/* ====================================================
                   TOP SELLING PRODUCTS
               ==================================================== */}

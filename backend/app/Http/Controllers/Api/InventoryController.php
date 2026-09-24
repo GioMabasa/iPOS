@@ -11,6 +11,8 @@ use App\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\PurchaseItem;
+use App\Models\Purchase;
 
 class InventoryController extends Controller
 {
@@ -730,6 +732,30 @@ class InventoryController extends Controller
     ): JsonResponse {
         $stock = $inventoryService->getCurrentStock($product);
 
+        $supplierCostHistory = PurchaseItem::query()
+            ->where('product_id', $product->id)
+            ->whereHas('purchase', function ($query) {
+                $query->where('status', 'received');
+            })
+            ->with('purchase.supplier')
+            ->orderByDesc(
+                Purchase::select('purchase_date')
+                    ->whereColumn(
+                        'purchases.id',
+                        'purchase_items.purchase_id'
+                    )
+            )
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (PurchaseItem $item) {
+                return [
+                    'supplier' => $item->purchase?->supplier?->name,
+                    'cost_price' => (float) $item->unit_cost,
+                    'purchase_date' => $item->purchase?->purchase_date?->format('Y-m-d'),
+                ];
+            })
+            ->values();
+
         $purchaseTransactions = InventoryTransaction::query()
             ->where('product_id', $product->id)
             ->where('type', 'purchase')
@@ -824,6 +850,7 @@ class InventoryController extends Controller
                 'minimum_stock' => (float) $product->minimum_stock,
                 'is_low_stock' => $stock <= (float) $product->minimum_stock,
                 'is_active' => (bool) $product->is_active,
+                'supplier_cost_history' => $supplierCostHistory,
             ],
         ]);
     }

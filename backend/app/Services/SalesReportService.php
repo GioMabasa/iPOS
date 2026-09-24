@@ -505,6 +505,7 @@ class SalesReportService
                 return $data;
             })
             ->sortByDesc('quantity_sold')
+            ->take(10)
             ->values();
     }
 

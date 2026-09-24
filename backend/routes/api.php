@@ -170,6 +170,11 @@ Route::middleware('auth:sanctum')->group(function () {
         |--------------------------------------------------------------------------
         */
 
+        Route::get(
+            '/products/export',
+            [ProductController::class, 'export']
+        );
+
         Route::apiResource(
             'products',
             ProductController::class

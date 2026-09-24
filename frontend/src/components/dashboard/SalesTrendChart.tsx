@@ -13,6 +13,10 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat("en-PH").format(Number(value) || 0);
+}
+
 function formatDate(date: string): string {
   const parsed = new Date(`${date}T00:00:00`);
 
@@ -27,8 +31,33 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
 
   if (data.length === 0) {
     return (
-      <div className="flex h-80 items-center justify-center text-sm text-gray-500">
-        No sales data for this period.
+      <div className="flex h-80 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-indigo-50/50">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-400">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="h-6 w-6"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18" />
+
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m7 15 3-3 3 2 5-6"
+            />
+          </svg>
+        </div>
+
+        <p className="mt-4 text-sm font-semibold text-slate-700">
+          No sales data
+        </p>
+
+        <p className="mt-1 text-xs text-slate-400">
+          No sales data for this period.
+        </p>
       </div>
     );
   }
@@ -145,7 +174,7 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
   |--------------------------------------------------------------------------
   */
 
-  const maxLabels = 8;
+  const maxLabels = 6;
 
   const labelStep =
     data.length <= maxLabels ? 1 : Math.ceil(data.length / maxLabels);
@@ -161,25 +190,91 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* PERIOD SALES */}
 
-        <div className="rounded-lg bg-gray-50 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Period Sales
-          </p>
+        <div className="group relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-indigo-100/60 transition duration-300 group-hover:scale-110" />
 
-          <p className="mt-1 text-lg font-bold text-gray-900">
-            {formatCurrency(totalSales)}
+          <div className="relative flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+                Period Sales
+              </p>
+
+              <p className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
+                {formatCurrency(totalSales)}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition duration-200 group-hover:scale-105 group-hover:bg-indigo-700">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 13.5 9 7l4 4 8-8"
+                />
+
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 7v5h-5"
+                />
+              </svg>
+            </div>
+          </div>
+
+          <p className="relative mt-3 border-t border-indigo-100/80 pt-3 text-xs font-medium text-indigo-600/80">
+            Total revenue for the current month.
           </p>
         </div>
 
         {/* TRANSACTIONS */}
 
-        <div className="rounded-lg bg-gray-50 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Transactions
-          </p>
+        <div className="group relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-blue-100/60 transition duration-300 group-hover:scale-110" />
 
-          <p className="mt-1 text-lg font-bold text-gray-900">
-            {totalTransactions}
+          <div className="relative flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                Transactions
+              </p>
+
+              <p className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
+                {formatNumber(totalTransactions)}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition duration-200 group-hover:scale-105 group-hover:bg-blue-700">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
+                />
+
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 7h8M8 11h8M8 15h5"
+                />
+              </svg>
+            </div>
+          </div>
+
+          <p className="relative mt-3 border-t border-blue-100/80 pt-3 text-xs font-medium text-blue-600/80">
+            Completed sales for the current month.
           </p>
         </div>
       </div>
@@ -188,7 +283,7 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
           CHART
       ========================================================== */}
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/20 to-violet-50/30 shadow-sm">
         <div
           className="relative min-w-[700px]"
           style={{
@@ -201,6 +296,41 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
             role="img"
             aria-label="Sales trend chart"
           >
+            {/* ==================================================
+                GRADIENT
+            ================================================== */}
+
+            <defs>
+              <linearGradient
+                id="salesTrendAreaGradient"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop
+                  offset="0%"
+                  className="text-indigo-500"
+                  stopColor="currentColor"
+                  stopOpacity="0.24"
+                />
+
+                <stop
+                  offset="55%"
+                  className="text-violet-500"
+                  stopColor="currentColor"
+                  stopOpacity="0.10"
+                />
+
+                <stop
+                  offset="100%"
+                  className="text-violet-500"
+                  stopColor="currentColor"
+                  stopOpacity="0.01"
+                />
+              </linearGradient>
+            </defs>
+
             {/* ==================================================
                 GRID
             ================================================== */}
@@ -215,15 +345,15 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
                     y1={y}
                     x2={width - paddingRight}
                     y2={y}
-                    className="stroke-gray-100"
+                    className="stroke-indigo-100/70"
                     strokeWidth="1"
                   />
 
                   <text
-                    x={paddingLeft - 12}
+                    x={paddingLeft - 14}
                     y={y + 4}
                     textAnchor="end"
-                    className="fill-gray-400 text-[12px]"
+                    className="fill-slate-400 text-[11px]"
                   >
                     {formatCurrency(value)}
                   </text>
@@ -232,10 +362,27 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
             })}
 
             {/* ==================================================
+                BASELINE
+            ================================================== */}
+
+            <line
+              x1={paddingLeft}
+              y1={paddingTop + chartHeight}
+              x2={width - paddingRight}
+              y2={paddingTop + chartHeight}
+              className="stroke-indigo-200"
+              strokeWidth="1"
+            />
+
+            {/* ==================================================
                 AREA
             ================================================== */}
 
-            <path d={areaPath} className="fill-indigo-50" />
+            <path
+              d={areaPath}
+              fill="url(#salesTrendAreaGradient)"
+              stroke="none"
+            />
 
             {/* ==================================================
                 LINE
@@ -246,7 +393,7 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
                 d={linePath}
                 fill="none"
                 className="stroke-indigo-600"
-                strokeWidth="3"
+                strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -266,21 +413,47 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
                   onMouseLeave={() => setActiveIndex(null)}
                   className="cursor-pointer"
                 >
+                  {/* Hover area */}
+
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r="12"
+                    className="fill-transparent"
+                  />
+
                   {isActive && (
-                    <circle
-                      cx={point.x}
-                      cy={point.y}
-                      r="9"
-                      className="fill-indigo-100"
-                    />
+                    <>
+                      <circle
+                        cx={point.x}
+                        cy={point.y}
+                        r="11"
+                        className="fill-indigo-100/80"
+                      />
+
+                      <circle
+                        cx={point.x}
+                        cy={point.y}
+                        r="8"
+                        className="fill-violet-100"
+                      />
+
+                      <circle
+                        cx={point.x}
+                        cy={point.y}
+                        r="6"
+                        className="fill-white stroke-indigo-500"
+                        strokeWidth="2.5"
+                      />
+                    </>
                   )}
 
                   <circle
                     cx={point.x}
                     cy={point.y}
-                    r={isActive ? 5 : 4}
+                    r={isActive ? 4.5 : 3.5}
                     className="fill-white stroke-indigo-600"
-                    strokeWidth="3"
+                    strokeWidth="2.5"
                   />
                 </g>
               );
@@ -301,7 +474,7 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
                   x={getX(index)}
                   y={height - 22}
                   textAnchor="middle"
-                  className="fill-gray-400 text-[12px]"
+                  className="fill-slate-400 text-[11px]"
                 >
                   {formatDate(item.date)}
                 </text>
@@ -315,28 +488,55 @@ export default function SalesTrendChart({ data }: SalesTrendChartProps) {
 
           {activeItem && activeIndex !== null && (
             <div
-              className="pointer-events-none absolute z-10 w-48 -translate-x-1/2 -translate-y-full rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
+              className="pointer-events-none absolute z-10 w-52 -translate-x-1/2 -translate-y-[calc(100%+12px)] overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-xl shadow-indigo-100/40"
               style={{
                 left: `${(points[activeIndex].x / width) * 100}%`,
 
                 top: `${(points[activeIndex].y / height) * 100}%`,
               }}
             >
-              <p className="text-xs font-medium text-gray-500">
-                {formatDate(activeItem.date)}
-              </p>
+              <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50 px-3.5 py-2.5">
+                <p className="text-xs font-semibold text-indigo-700">
+                  {formatDate(activeItem.date)}
+                </p>
+              </div>
 
-              <p className="mt-1 text-base font-bold text-gray-900">
-                {formatCurrency(Number(activeItem.sales))}
-              </p>
+              <div className="px-3.5 py-3">
+                <p className="text-xs font-medium text-slate-500">
+                  Daily Sales
+                </p>
 
-              <p className="mt-1 text-xs text-gray-500">
-                {activeItem.transaction_count} transaction
-                {activeItem.transaction_count !== 1 ? "s" : ""}
-              </p>
+                <p className="mt-1 text-lg font-bold tracking-tight text-indigo-700">
+                  {formatCurrency(Number(activeItem.sales))}
+                </p>
+
+                <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
+                  <div className="h-2 w-2 rounded-full bg-indigo-600" />
+
+                  <p className="text-xs text-slate-500">
+                    {formatNumber(Number(activeItem.transaction_count))}{" "}
+                    transaction
+                    {activeItem.transaction_count !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </div>
+      </div>
+
+      {/* ==========================================================
+          CHART FOOTER
+      ========================================================== */}
+
+      <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+        <span className="h-2 w-2 rounded-full bg-indigo-600 shadow-sm shadow-indigo-200" />
+
+        <span>Daily sales</span>
+
+        <span className="text-slate-300">•</span>
+
+        <span>Hover over a point for details</span>
       </div>
     </div>
   );
