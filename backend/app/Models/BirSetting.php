@@ -13,6 +13,8 @@ class BirSetting extends Model
         'business_name',
         'business_address',
         'vat_registered',
+        'tax_type',
+        'vat_rate',
         'invoice_prefix',
         'invoice_current',
         'permit_number',
@@ -28,5 +30,6 @@ class BirSetting extends Model
         'permit_date' => 'date',
         'accreditation_date' => 'date',
         'invoice_current' => 'integer',
+        'vat_rate' => 'decimal:2',
     ];
 }

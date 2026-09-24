@@ -60,8 +60,6 @@ class SalesExport implements
                 $sale['payment_method'] ?? '',
                 $sale['term_months'] ?? 0,
                 $sale['due_date'] ?? '',
-                $sale['amount_paid'] ?? 0,
-                $sale['change_amount'] ?? 0,
                 $sale['status'] ?? '',
             ];
         });
@@ -86,8 +84,6 @@ class SalesExport implements
             'Payment Method',
             'Term (Months)',
             'Due Date',
-            'Amount Paid',
-            'Change',
             'Status',
         ];
     }
@@ -122,9 +118,8 @@ class SalesExport implements
             'N' => 16,
             'O' => 14,
             'P' => 16,
-            'Q' => 16,
-            'R' => 14,
-            'S' => 14,
+            'Q' => 14,
+
         ];
     }
 
@@ -186,9 +181,6 @@ class SalesExport implements
                         return (float) ($sale['total'] ?? 0);
                     });
 
-                $amountPaid = $completedSales->sum(function ($sale) {
-                    return (float) ($sale['amount_paid'] ?? 0);
-                });
 
                 $outstandingBalance = $completedSales
                     ->filter(function ($sale) {
@@ -488,17 +480,10 @@ class SalesExport implements
                             'format' => '#,##0.00',
                         ],
                         [
-                            'label' => 'Amount Paid',
-                            'value' => $amountPaid,
-                            'start' => 'K',
-                            'end' => 'N',
-                            'format' => '#,##0.00',
-                        ],
-                        [
                             'label' => 'Outstanding Balance',
                             'value' => $outstandingBalance,
-                            'start' => 'P',
-                            'end' => 'S',
+                            'start' => 'K',
+                            'end' => 'N',
                             'format' => '#,##0.00',
                         ],
                     ]
@@ -591,7 +576,7 @@ class SalesExport implements
                 }
 
                 $sheet->getStyle(
-                    "A{$headerRow}:S{$headerRow}"
+                    "A{$headerRow}:R{$headerRow}"
                 )->applyFromArray([
                     'font' => [
                         'bold' => true,
@@ -649,8 +634,6 @@ class SalesExport implements
                             'J',
                             'K',
                             'L',
-                            'Q',
-                            'R',
                         ] as $column
                     ) {
 
@@ -686,13 +669,13 @@ class SalesExport implements
                      * Status formatting.
                      */
                     $status = strtolower(
-                        (string) ($row[18] ?? '')
+                        (string) ($row[16] ?? '')
                     );
 
                     if ($status === 'completed') {
 
                         $sheet->getStyle(
-                            "S{$excelRow}"
+                            "Q{$excelRow}"
                         )->applyFromArray([
                             'font' => [
                                 'bold' => true,
@@ -704,7 +687,7 @@ class SalesExport implements
                     } elseif ($status === 'voided') {
 
                         $sheet->getStyle(
-                            "S{$excelRow}"
+                            "Q{$excelRow}"
                         )->applyFromArray([
                             'font' => [
                                 'bold' => true,
@@ -716,7 +699,7 @@ class SalesExport implements
                     } elseif ($status === 'refunded') {
 
                         $sheet->getStyle(
-                            "S{$excelRow}"
+                            "Q{$excelRow}"
                         )->applyFromArray([
                             'font' => [
                                 'bold' => true,

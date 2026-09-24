@@ -23,52 +23,22 @@ class SaleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'search' => [
-                'nullable',
-                'string',
-            ],
-
-            'status' => [
-                'nullable',
-                'in:completed,refunded,voided',
-            ],
-
-            'payment_method' => [
-                'nullable',
-                'in:cash,charge',
-            ],
-
-            'user_id' => [
-                'nullable',
-                'integer',
-                'exists:users,id',
-            ],
-
-            'date_from' => [
-                'nullable',
-                'date',
-            ],
-
-            'date_to' => [
-                'nullable',
-                'date',
-                'after_or_equal:date_from',
-            ],
+            'search' => ['nullable', 'string'],
+            'status' => ['nullable', 'in:completed,refunded,voided'],
+            'payment_method' => ['nullable', 'in:cash,charge'],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
 
-        /*
-         * Base query for sales.
-         *
-         * This query is used for both:
-         * - paginated sales list
-         * - summary calculations
-         */
         $query = Sale::query();
 
         /*
-        * Cashier can only see their own sales.
-        * Manager and Admin can see all sales.
-        */
+    |--------------------------------------------------------------------------
+    | User Filter
+    |--------------------------------------------------------------------------
+    */
+
         if ($request->user()->role === 'cashier') {
             $query->where('user_id', $request->user()->id);
         } elseif (!empty($validated['user_id'])) {
@@ -76,27 +46,20 @@ class SaleController extends Controller
         }
 
         /*
-         * Search
-         *
-         * Search by:
-         * - Sale number
-         * - Invoice number
-         * - Customer name
-         * - Cashier name
-         */
-        if (!empty($validated['search'])) {
+    |--------------------------------------------------------------------------
+    | Search Filter
+    |--------------------------------------------------------------------------
+    */
 
+        if (!empty($validated['search'])) {
             $search = $validated['search'];
 
             $query->where(function ($q) use ($search) {
-
                 $q->where('sale_number', 'like', "%{$search}%")
                     ->orWhere('invoice_number', 'like', "%{$search}%")
-
                     ->orWhereHas('customer', function ($customerQuery) use ($search) {
                         $customerQuery->where('name', 'like', "%{$search}%");
                     })
-
                     ->orWhereHas('user', function ($userQuery) use ($search) {
                         $userQuery->where('name', 'like', "%{$search}%");
                     });
@@ -104,28 +67,21 @@ class SaleController extends Controller
         }
 
         /*
-         * Type / Status filter
-         */
+    |--------------------------------------------------------------------------
+    | Status Filter
+    |--------------------------------------------------------------------------
+    */
+
         if (!empty($validated['status'])) {
-            $query->where(
-                'status',
-                $validated['status']
-            );
+            $query->where('status', $validated['status']);
         }
 
         /*
-        * Payment Method filter
-        */
-        if (!empty($validated['payment_method'])) {
-            $query->where(
-                'payment_method',
-                $validated['payment_method']
-            );
-        }
+    |--------------------------------------------------------------------------
+    | Date Filters
+    |--------------------------------------------------------------------------
+    */
 
-        /*
-         * Date From
-         */
         if (!empty($validated['date_from'])) {
             $query->whereDate(
                 'sale_date',
@@ -134,9 +90,6 @@ class SaleController extends Controller
             );
         }
 
-        /*
-         * Date To
-         */
         if (!empty($validated['date_to'])) {
             $query->whereDate(
                 'sale_date',
@@ -146,37 +99,69 @@ class SaleController extends Controller
         }
 
         /*
-         * Clone the filtered query before pagination
-         * so summary values use ALL matching sales,
-         * not only the current page.
-         */
+    |--------------------------------------------------------------------------
+    | Payment Summary Query
+    |
+    | Clone BEFORE applying payment_method filter.
+    | This allows Cash Sales and Charge Sales to be calculated
+    | independently of the selected payment filter.
+    |--------------------------------------------------------------------------
+    */
+
+        $paymentSummaryQuery = clone $query;
+
+        /*
+    |--------------------------------------------------------------------------
+    | Payment Method Filter
+    |
+    | This filter is still applied to the actual sales list
+    | and the normal sales summary.
+    |--------------------------------------------------------------------------
+    */
+
+        if (!empty($validated['payment_method'])) {
+            $query->where(
+                'payment_method',
+                $validated['payment_method']
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Summary Query
+    |--------------------------------------------------------------------------
+    */
+
         $summaryQuery = clone $query;
 
         /*
-         * Total Transactions
-         */
+    |--------------------------------------------------------------------------
+    | Total Transactions
+    |--------------------------------------------------------------------------
+    */
+
         $totalTransactions = $summaryQuery->count();
 
         /*
-         * Total Void
-         */
+    |--------------------------------------------------------------------------
+    | Void / Refund
+    |--------------------------------------------------------------------------
+    */
+
         $totalVoid = (clone $query)
             ->where('status', 'voided')
             ->count();
 
-        /*
-         * Total Refund
-         */
         $totalRefund = (clone $query)
             ->where('status', 'refunded')
             ->count();
 
         /*
-         * Total Items Sold
-         *
-         * Only completed sales are counted as actual
-         * items sold.
-         */
+    |--------------------------------------------------------------------------
+    | Total Items Sold
+    |--------------------------------------------------------------------------
+    */
+
         $totalItemsSold = (clone $query)
             ->where('status', 'completed')
             ->withSum('items', 'quantity')
@@ -184,23 +169,21 @@ class SaleController extends Controller
             ->sum('items_sum_quantity');
 
         /*
-         * Total Sales
-         *
-         * Only completed sales contribute to normal
-         * sales revenue.
-         */
+    |--------------------------------------------------------------------------
+    | Total Sales
+    |--------------------------------------------------------------------------
+    */
+
         $totalSales = (clone $query)
             ->where('status', 'completed')
             ->sum('total');
 
         /*
-         * Gross Profit
-         *
-         * Gross profit = Total Sales - FIFO COGS.
-         *
-         * total_cost and gross_profit are calculated
-         * from the sale items/FIFO costs.
-         */
+    |--------------------------------------------------------------------------
+    | Completed Sales / COGS
+    |--------------------------------------------------------------------------
+    */
+
         $completedSales = (clone $query)
             ->where('status', 'completed')
             ->with('items')
@@ -212,11 +195,103 @@ class SaleController extends Controller
             });
         });
 
+        /*
+    |--------------------------------------------------------------------------
+    | Gross Profit
+    |--------------------------------------------------------------------------
+    */
+
         $grossProfit = $totalSales - $totalCOGS;
 
         /*
-         * Paginated Sales
-         */
+    |--------------------------------------------------------------------------
+    | Gross Margin
+    |--------------------------------------------------------------------------
+    */
+
+        $grossMargin = $totalSales > 0
+            ? ($grossProfit / $totalSales) * 100
+            : 0;
+
+        /*
+    |--------------------------------------------------------------------------
+    | Cash Sales
+    |
+    | Uses paymentSummaryQuery so this remains independent
+    | from the payment_method filter.
+    |--------------------------------------------------------------------------
+    */
+
+        $cashSales = (clone $paymentSummaryQuery)
+            ->where('status', 'completed')
+            ->where('payment_method', 'cash')
+            ->sum('total');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Charge Sales
+    |--------------------------------------------------------------------------
+    */
+
+        $chargeSales = (clone $paymentSummaryQuery)
+            ->where('status', 'completed')
+            ->where('payment_method', 'charge')
+            ->sum('total');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Amount Paid
+    |--------------------------------------------------------------------------
+    */
+
+        $amountPaid = (clone $query)
+            ->where('status', 'completed')
+            ->sum('amount_paid');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Outstanding Balance
+    |--------------------------------------------------------------------------
+    */
+
+        $outstandingBalance = (clone $query)
+            ->where('status', 'completed')
+            ->where('payment_method', 'charge')
+            ->get()
+            ->sum(function ($sale) {
+                return max(
+                    0,
+                    (float) $sale->total
+                        - (float) ($sale->amount_paid ?? 0)
+                );
+            });
+
+        /*
+    |--------------------------------------------------------------------------
+    | Discount
+    |--------------------------------------------------------------------------
+    */
+
+        $totalDiscount = (clone $query)
+            ->where('status', 'completed')
+            ->sum('discount');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Tax
+    |--------------------------------------------------------------------------
+    */
+
+        $totalTax = (clone $query)
+            ->where('status', 'completed')
+            ->sum('tax');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Sales List
+    |--------------------------------------------------------------------------
+    */
+
         $sales = $query
             ->with([
                 'customer',
@@ -227,6 +302,12 @@ class SaleController extends Controller
             ->latest('id')
             ->paginate(20);
 
+        /*
+    |--------------------------------------------------------------------------
+    | Response
+    |--------------------------------------------------------------------------
+    */
+
         return response()->json([
             'data' => $sales,
 
@@ -236,11 +317,24 @@ class SaleController extends Controller
                 'total_sales' => (float) $totalSales,
                 'total_cogs' => (float) $totalCOGS,
                 'gross_profit' => (float) $grossProfit,
+                'gross_margin' => round($grossMargin, 2),
+
+                'cash_sales' => (float) $cashSales,
+                'charge_sales' => (float) $chargeSales,
+
+                'amount_paid' => (float) $amountPaid,
+                'outstanding_balance' => (float) $outstandingBalance,
+
                 'total_void' => $totalVoid,
                 'total_refund' => $totalRefund,
+
+                'total_discount' => (float) $totalDiscount,
+                'total_tax' => (float) $totalTax,
             ],
         ]);
     }
+
+
 
     /*
     |--------------------------------------------------------------------------
@@ -332,8 +426,13 @@ class SaleController extends Controller
         }
 
         /*
-         * Payment Method filter
-         */
+        * Payment Method filter
+        *
+        * Keep a separate query for payment summary cards
+        * before applying the selected payment method filter.
+        */
+        $paymentSummaryQuery = clone $query;
+
         if (!empty($validated['payment_method'])) {
             $query->where(
                 'payment_method',
@@ -459,17 +558,6 @@ class SaleController extends Controller
                 'due_date' =>
                 $sale->due_date ?? '',
 
-                'amount_paid' =>
-                (float) (
-                    $sale->amount_paid
-                    ?? 0
-                ),
-
-                'change_amount' =>
-                (float) (
-                    $sale->change_amount
-                    ?? 0
-                ),
 
                 'status' =>
                 $status,

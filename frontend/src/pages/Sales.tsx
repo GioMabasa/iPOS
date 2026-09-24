@@ -71,6 +71,14 @@ export default function Sales() {
   const [totalVoid, setTotalVoid] = useState(0);
   const [totalRefund, setTotalRefund] = useState(0);
 
+  const [grossMargin, setGrossMargin] = useState(0);
+  const [cashSales, setCashSales] = useState(0);
+  const [chargeSales, setChargeSales] = useState(0);
+
+  const [outstandingBalance, setOutstandingBalance] = useState(0);
+  const [totalDiscount, setTotalDiscount] = useState(0);
+  const [totalTax, setTotalTax] = useState(0);
+
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
   const [requestAction, setRequestAction] = useState<"void" | "refund" | null>(
@@ -217,6 +225,13 @@ export default function Sales() {
       setGrossProfit(response.summary.gross_profit);
       setTotalVoid(response.summary.total_void ?? 0);
       setTotalRefund(response.summary.total_refund ?? 0);
+      setCashSales(response.summary.cash_sales);
+      setChargeSales(response.summary.charge_sales ?? 0);
+
+      setTotalDiscount(response.summary.total_discount ?? 0);
+      setTotalTax(response.summary.total_tax ?? 0);
+
+      setGrossMargin(response.summary.gross_margin ?? 0);
     } catch (err) {
       console.error(err);
       setError("Unable to load sales.");
@@ -255,6 +270,16 @@ export default function Sales() {
 
   useEffect(() => {
     loadSales();
+
+    function handleSaleCompleted() {
+      void loadSales();
+    }
+
+    window.addEventListener("ipos:sale-completed", handleSaleCompleted);
+
+    return () => {
+      window.removeEventListener("ipos:sale-completed", handleSaleCompleted);
+    };
   }, [
     page,
     status,
@@ -691,21 +716,7 @@ export default function Sales() {
       </div>
 
       {/* Summary Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Transactions</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {totalTransactions.toLocaleString()}
-          </p>
-        </div>
-
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Items Sold</p>
-          <p className="mt-1 text-2xl font-bold text-gray-800">
-            {totalItemsSold.toLocaleString()}
-          </p>
-        </div>
-
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-7">
         <div className="rounded-lg border bg-white p-5 shadow-sm">
           <p className="text-sm text-gray-500">Total Sales</p>
           <p className="mt-1 text-2xl font-bold text-gray-800">
@@ -728,6 +739,48 @@ export default function Sales() {
         </div>
 
         <div className="rounded-lg border bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Gross Margin</p>
+          <p className="mt-1 text-2xl font-bold text-green-600">
+            {Number(grossMargin).toFixed(2)}%
+          </p>
+        </div>
+
+        <div className="rounded-lg border bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Cash Sales</p>
+          <p className="mt-1 text-2xl font-bold text-gray-800">
+            {formatCurrency(cashSales)}
+          </p>
+        </div>
+
+        <div className="rounded-lg border bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Charge Sales</p>
+          <p className="mt-1 text-2xl font-bold text-gray-800">
+            {formatCurrency(chargeSales)}
+          </p>
+        </div>
+
+        <div className="rounded-lg border bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Outstanding Balance</p>
+          <p className="mt-1 text-2xl font-bold text-orange-600">
+            {formatCurrency(outstandingBalance)}
+          </p>
+        </div>
+
+        <div className="rounded-lg border bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Total Transactions</p>
+          <p className="mt-1 text-2xl font-bold text-gray-800">
+            {totalTransactions.toLocaleString()}
+          </p>
+        </div>
+
+        <div className="rounded-lg border bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Total Items Sold</p>
+          <p className="mt-1 text-2xl font-bold text-gray-800">
+            {totalItemsSold.toLocaleString()}
+          </p>
+        </div>
+
+        <div className="rounded-lg border bg-white p-5 shadow-sm">
           <p className="text-sm text-gray-500">Total Void</p>
           <p className="mt-1 text-2xl font-bold text-gray-800">
             {totalVoid.toLocaleString()}
@@ -738,6 +791,20 @@ export default function Sales() {
           <p className="text-sm text-gray-500">Total Refund</p>
           <p className="mt-1 text-2xl font-bold text-gray-800">
             {totalRefund.toLocaleString()}
+          </p>
+        </div>
+
+        <div className="rounded-lg border bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Total Discount</p>
+          <p className="mt-1 text-2xl font-bold text-gray-800">
+            {formatCurrency(totalDiscount)}
+          </p>
+        </div>
+
+        <div className="rounded-lg border bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Total Tax</p>
+          <p className="mt-1 text-2xl font-bold text-gray-800">
+            {formatCurrency(totalTax)}
           </p>
         </div>
       </div>

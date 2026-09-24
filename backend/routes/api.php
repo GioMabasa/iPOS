@@ -36,7 +36,6 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
-
     Route::post('/sales/{sale}/void-request', [SaleController::class, 'voidRequest']);
     Route::post('/sales/{sale}/refund-request', [SaleController::class, 'refundRequest']);
     Route::get('/sales/action-requests', [SaleController::class, 'actionRequests']);
@@ -55,7 +54,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
-
+    Route::get(
+        '/bir-settings',
+        [BirSettingController::class, 'show']
+    );
 
     /*
     |--------------------------------------------------------------------------
@@ -89,10 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
-            '/bir-settings',
-            [BirSettingController::class, 'show']
-        );
+
 
         Route::post(
             '/bir-settings',

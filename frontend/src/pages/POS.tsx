@@ -4,9 +4,11 @@ import { getPOSProducts, type POSProduct } from "../services/inventoryService";
 import { createSale } from "../services/saleService";
 import { getCustomers } from "../services/customerService";
 import { getSettings } from "../services/settingService";
+import { getBirSettings } from "../services/birSettingService";
 
 import type { CreateSaleRequest } from "../types/sale";
 import type { Customer } from "../types/customer";
+import type { TaxType } from "../types/birSetting";
 
 /*
 |--------------------------------------------------------------------------
@@ -148,7 +150,11 @@ export default function POS() {
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  const [amountPaid, setAmountPaid] = useState("");
+  const [amountPaid, setAmountPaid] = useState("0");
+
+  const [discount, setDiscount] = useState("0");
+
+  const [tax, setTax] = useState("0");
 
   const [notes, setNotes] = useState("");
 
@@ -165,6 +171,16 @@ export default function POS() {
   );
 
   const [termMonths, setTermMonths] = useState<number | null>(null);
+
+  /*
+  |--------------------------------------------------------------------------
+  | BIR Tax Settings
+  |--------------------------------------------------------------------------
+  */
+
+  const [taxType, setTaxType] = useState<TaxType>("non_vat");
+
+  const [vatRate, setVatRate] = useState("12");
 
   useEffect(() => {
     if (showPaymentModal) {
@@ -273,6 +289,44 @@ export default function POS() {
 
   /*
   |--------------------------------------------------------------------------
+  | Load BIR Settings
+  |--------------------------------------------------------------------------
+  */
+
+  async function loadBirSettings() {
+    try {
+      const response = await getBirSettings();
+
+      if (!response.data) {
+        setTaxType("non_vat");
+        setVatRate("12");
+        setTax("0");
+
+        return;
+      }
+
+      const configuredTaxType = response.data.vat_registered
+        ? (response.data.tax_type ?? "non_vat")
+        : "non_vat";
+
+      const configuredVatRate = toNumber(response.data.vat_rate);
+
+      setTaxType(configuredTaxType);
+
+      setVatRate(String(configuredVatRate));
+
+      setTax(configuredTaxType === "non_vat" ? "0" : String(configuredVatRate));
+    } catch (err) {
+      console.error("BIR settings loading error:", err);
+
+      setTaxType("non_vat");
+      setVatRate("12");
+      setTax("0");
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
   | Initial Load
   |--------------------------------------------------------------------------
   */
@@ -280,6 +334,7 @@ export default function POS() {
   useEffect(() => {
     loadInventory(1, "", true);
     void loadSettings();
+    void loadBirSettings();
   }, []);
 
   /*
@@ -560,7 +615,31 @@ export default function POS() {
     0,
   );
 
-  const total = subtotal;
+  const discountRate = Math.min(Math.max(toNumber(discount), 0), 100);
+
+  const discountAmount = subtotal * (discountRate / 100);
+
+  const taxableAmount = Math.max(subtotal - discountAmount, 0);
+
+  const taxRate = Math.min(Math.max(toNumber(tax), 0), 100);
+
+  let taxAmount = 0;
+
+  let total = taxableAmount;
+
+  if (taxType === "vat_exclusive") {
+    taxAmount = taxableAmount * (taxRate / 100);
+
+    total = taxableAmount + taxAmount;
+  } else if (taxType === "vat_inclusive") {
+    const divisor = 1 + taxRate / 100;
+
+    const netAmount = divisor > 0 ? taxableAmount / divisor : taxableAmount;
+
+    taxAmount = taxableAmount - netAmount;
+
+    total = taxableAmount;
+  }
 
   const numericAmountPaid = toNumber(amountPaid);
 
@@ -590,6 +669,10 @@ export default function POS() {
     setError("");
 
     setAmountPaid("0");
+
+    setDiscount("0");
+
+    setTax(taxType === "non_vat" ? "0" : vatRate);
 
     setNotes("");
 
@@ -641,6 +724,12 @@ export default function POS() {
 
     setShowPaymentModal(false);
 
+    setDiscount("0");
+
+    setTax(taxType === "non_vat" ? "0" : vatRate);
+
+    setAmountPaid("0");
+
     focusSearchInput();
   }
 
@@ -691,9 +780,9 @@ export default function POS() {
 
         sale_date: getToday(),
 
-        discount: 0,
+        discount: discountAmount,
 
-        tax: 0,
+        tax: taxAmount,
 
         amount_paid: paymentMethod === "cash" ? numericAmountPaid : 0,
 
@@ -710,11 +799,17 @@ export default function POS() {
 
       console.log("Sale completed:", response);
 
+      window.dispatchEvent(new Event("ipos:sale-completed"));
+
       setShowPaymentModal(false);
 
       setCart([]);
 
-      setAmountPaid("");
+      setAmountPaid("0");
+
+      setDiscount("0");
+
+      setTax(taxType === "non_vat" ? "0" : vatRate);
 
       setNotes("");
 
@@ -791,6 +886,11 @@ export default function POS() {
     paymentMethod,
     selectedCustomerId,
     termMonths,
+    discountRate,
+    taxRate,
+    discountAmount,
+    taxAmount,
+    total,
   ]);
 
   /*
@@ -1288,7 +1388,7 @@ export default function POS() {
                 <span>{formatCurrency(subtotal)}</span>
               </div>
 
-              <div className="flex justify-between text-lg font-bold text-gray-900">
+              <div className="flex justify-between text-2xl font-bold text-gray-900">
                 <span>Total</span>
 
                 <span>{formatCurrency(total)}</span>
@@ -1370,7 +1470,7 @@ export default function POS() {
 
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
             {/* HEADER */}
 
             <div className="flex shrink-0 items-center justify-between border-b border-gray-200 p-5">
@@ -1395,227 +1495,365 @@ export default function POS() {
             {/* CONTENT */}
 
             <div className="min-h-0 flex-1 overflow-y-auto p-5">
-              {/* TOTAL */}
+              <div className="grid gap-5 lg:grid-cols-2">
+                {/* ======================================================
+                    LEFT SIDE - PAYMENT DETAILS
+                ====================================================== */}
 
-              <div className="rounded-lg bg-indigo-50 p-4">
-                <p className="text-sm text-indigo-600">Total Amount</p>
-
-                <p className="mt-1 text-2xl font-bold text-indigo-700">
-                  {formatCurrency(total)}
-                </p>
-              </div>
-
-              {/* PAYMENT METHOD */}
-
-              <div className="mt-5">
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Payment Method
-                </label>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentMethod("cash");
-                      setError("");
-                    }}
-                    disabled={submitting}
-                    className={`h-11 rounded-lg border text-sm font-semibold transition ${
-                      paymentMethod === "cash"
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    Cash
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentMethod("charge");
-                      setAmountPaid("0");
-                      setError("");
-                    }}
-                    disabled={submitting}
-                    className={`h-11 rounded-lg border text-sm font-semibold transition ${
-                      paymentMethod === "charge"
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    Charge
-                  </button>
-                </div>
-              </div>
-
-              {/* CUSTOMER */}
-
-              <div className="mt-5">
-                <label
-                  htmlFor="sale-customer"
-                  className="mb-2 block text-sm font-medium text-gray-700"
-                >
-                  Customer
-                  {paymentMethod === "charge" && (
-                    <span className="ml-1 text-red-500">*</span>
-                  )}
-                </label>
-
-                <select
-                  id="sale-customer"
-                  value={selectedCustomerId ?? ""}
-                  onChange={(event) => {
-                    const value = event.target.value;
-
-                    setSelectedCustomerId(value ? Number(value) : null);
-
-                    setError("");
-                  }}
-                  disabled={submitting || customerLoading}
-                  className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                >
-                  <option value="">{defaultCustomer}</option>
-
-                  {customers
-                    .filter((customer) => customer.is_active)
-                    .map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                        {customer.business_type
-                          ? ` - ${customer.business_type}`
-                          : ""}
-                      </option>
-                    ))}
-                </select>
-
-                {customerLoading && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    Loading customers...
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <p className="mb-4 text-sm font-semibold text-gray-700">
+                    Payment Details
                   </p>
-                )}
 
-                {paymentMethod === "charge" && !selectedCustomer && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    A customer is required for charge payment.
-                  </p>
-                )}
-              </div>
+                  {/* PAYMENT METHOD */}
 
-              {/* TERM */}
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      Payment Method
+                    </label>
 
-              {paymentMethod === "charge" && (
-                <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod("cash");
+                          setError("");
+                        }}
+                        disabled={submitting}
+                        className={`h-11 rounded-lg border text-sm font-semibold transition ${
+                          paymentMethod === "cash"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                            : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        Cash
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod("charge");
+                          setAmountPaid("0");
+                          setError("");
+                        }}
+                        disabled={submitting}
+                        className={`h-11 rounded-lg border text-sm font-semibold transition ${
+                          paymentMethod === "charge"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                            : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        Charge
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CUSTOMER */}
+
                   <div className="mt-5">
                     <label
-                      htmlFor="sale-term"
+                      htmlFor="sale-customer"
                       className="mb-2 block text-sm font-medium text-gray-700"
                     >
-                      Payment Term
-                      <span className="ml-1 text-red-500">*</span>
+                      Customer
+                      {paymentMethod === "charge" && (
+                        <span className="ml-1 text-red-500">*</span>
+                      )}
                     </label>
 
                     <select
-                      id="sale-term"
-                      value={termMonths ?? ""}
+                      id="sale-customer"
+                      value={selectedCustomerId ?? ""}
                       onChange={(event) => {
                         const value = event.target.value;
 
-                        setTermMonths(value ? Number(value) : null);
+                        setSelectedCustomerId(value ? Number(value) : null);
 
                         setError("");
                       }}
-                      disabled={submitting}
+                      disabled={submitting || customerLoading}
                       className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     >
-                      <option value="">Select term</option>
+                      <option value="">{defaultCustomer}</option>
 
-                      {TERM_OPTIONS.map((months) => (
-                        <option key={months} value={months}>
-                          {months} {months === 1 ? "Month" : "Months"}
-                        </option>
-                      ))}
+                      {customers
+                        .filter((customer) => customer.is_active)
+                        .map((customer) => (
+                          <option key={customer.id} value={customer.id}>
+                            {customer.name}
+                            {customer.business_type
+                              ? ` - ${customer.business_type}`
+                              : ""}
+                          </option>
+                        ))}
                     </select>
+
+                    {customerLoading && (
+                      <p className="mt-1 text-xs text-gray-400">
+                        Loading customers...
+                      </p>
+                    )}
+
+                    {paymentMethod === "charge" && !selectedCustomer && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        A customer is required for charge payment.
+                      </p>
+                    )}
                   </div>
 
-                  {/* DUE DATE */}
+                  {/* TERM */}
 
-                  {dueDate && (
+                  {paymentMethod === "charge" && (
+                    <>
+                      <div className="mt-5">
+                        <label
+                          htmlFor="sale-term"
+                          className="mb-2 block text-sm font-medium text-gray-700"
+                        >
+                          Payment Term
+                          <span className="ml-1 text-red-500">*</span>
+                        </label>
+
+                        <select
+                          id="sale-term"
+                          value={termMonths ?? ""}
+                          onChange={(event) => {
+                            const value = event.target.value;
+
+                            setTermMonths(value ? Number(value) : null);
+
+                            setError("");
+                          }}
+                          disabled={submitting}
+                          className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                        >
+                          <option value="">Select term</option>
+
+                          {TERM_OPTIONS.map((months) => (
+                            <option key={months} value={months}>
+                              {months} {months === 1 ? "Month" : "Months"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* DUE DATE */}
+
+                      {dueDate && (
+                        <div className="mt-4 flex justify-between rounded-lg bg-gray-50 p-3">
+                          <span className="text-sm text-gray-600">
+                            Due Date
+                          </span>
+
+                          <span className="font-bold text-gray-900">
+                            {formatDate(dueDate)}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* AMOUNT PAID */}
+
+                  {paymentMethod === "cash" && (
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm font-medium text-gray-700">
+                        Amount Paid
+                      </label>
+
+                      <input
+                        ref={amountPaidInputRef}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={amountPaid}
+                        onChange={(event) => setAmountPaid(event.target.value)}
+                        onFocus={(event) => event.target.select()}
+                        disabled={submitting}
+                        className="h-11 w-full rounded-lg border border-gray-300 px-4 text-lg font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      />
+                    </div>
+                  )}
+
+                  {/* CHANGE */}
+
+                  {paymentMethod === "cash" && (
                     <div className="mt-4 flex justify-between rounded-lg bg-gray-50 p-3">
-                      <span className="text-sm text-gray-600">Due Date</span>
+                      <span className="text-sm text-gray-600">Change</span>
 
                       <span className="font-bold text-gray-900">
-                        {formatDate(dueDate)}
+                        {formatCurrency(changeAmount)}
                       </span>
                     </div>
                   )}
-                </>
-              )}
 
-              {/* AMOUNT PAID */}
+                  {/* CHARGE INFORMATION */}
 
-              {paymentMethod === "cash" && (
-                <div className="mt-5">
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Amount Paid
-                  </label>
+                  {paymentMethod === "charge" &&
+                    selectedCustomer &&
+                    termMonths && (
+                      <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-indigo-600">Customer</span>
 
-                  <input
-                    ref={amountPaidInputRef}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={amountPaid}
-                    onChange={(event) => setAmountPaid(event.target.value)}
-                    onFocus={(event) => event.target.select()}
-                    disabled={submitting}
-                    className="h-11 w-full rounded-lg border border-gray-300 px-4 text-lg font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                  />
+                          <span className="font-semibold text-indigo-900">
+                            {selectedCustomer.name}
+                          </span>
+                        </div>
+
+                        <div className="mt-1 flex justify-between text-sm">
+                          <span className="text-indigo-600">Term</span>
+
+                          <span className="font-semibold text-indigo-900">
+                            {termMonths} {termMonths === 1 ? "Month" : "Months"}
+                          </span>
+                        </div>
+
+                        {dueDate && (
+                          <div className="mt-1 flex justify-between text-sm">
+                            <span className="text-indigo-600">Due Date</span>
+
+                            <span className="font-semibold text-indigo-900">
+                              {formatDate(dueDate)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                 </div>
-              )}
 
-              {/* CHANGE */}
+                {/* ======================================================
+                    RIGHT SIDE - ADJUSTMENTS
+                ====================================================== */}
 
-              {paymentMethod === "cash" && (
-                <div className="mt-4 flex justify-between rounded-lg bg-gray-50 p-3">
-                  <span className="text-sm text-gray-600">Change</span>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <p className="mb-4 text-sm font-semibold text-gray-700">
+                    Adjustments
+                  </p>
 
-                  <span className="font-bold text-gray-900">
-                    {formatCurrency(changeAmount)}
-                  </span>
-                </div>
-              )}
+                  {/* DISCOUNT / TAX */}
 
-              {/* CHARGE INFORMATION */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* DISCOUNT */}
 
-              {paymentMethod === "charge" && selectedCustomer && termMonths && (
-                <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-indigo-600">Customer</span>
+                    <div>
+                      <label
+                        htmlFor="sale-discount"
+                        className="mb-2 block text-sm font-medium text-gray-700"
+                      >
+                        Discount (%)
+                      </label>
 
-                    <span className="font-semibold text-indigo-900">
-                      {selectedCustomer.name}
-                    </span>
+                      <div className="relative">
+                        <input
+                          id="sale-discount"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={discount}
+                          onChange={(event) => {
+                            setDiscount(event.target.value);
+                            setError("");
+                          }}
+                          onFocus={(event) => event.target.select()}
+                          disabled={submitting}
+                          className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 pr-10 text-right text-lg font-semibold text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                        />
+
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                          %
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        {formatCurrency(discountAmount)}
+                      </p>
+                    </div>
+
+                    {/* TAX */}
+
+                    <div>
+                      <label
+                        htmlFor="sale-tax"
+                        className="mb-2 block text-sm font-medium text-gray-700"
+                      >
+                        Tax (%)
+                      </label>
+
+                      <div className="relative">
+                        <input
+                          id="sale-tax"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={tax}
+                          onChange={(event) => {
+                            setTax(event.target.value);
+                            setError("");
+                          }}
+                          onFocus={(event) => event.target.select()}
+                          disabled={submitting || taxType === "non_vat"}
+                          className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 pr-10 text-right text-lg font-semibold text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+                        />
+
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                          %
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        {taxType === "vat_inclusive"
+                          ? "VAT included"
+                          : taxType === "vat_exclusive"
+                            ? "VAT added"
+                            : "Non-VAT"}
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        {formatCurrency(taxAmount)}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="mt-1 flex justify-between text-sm">
-                    <span className="text-indigo-600">Term</span>
+                  {/* ADJUSTMENT SUMMARY */}
 
-                    <span className="font-semibold text-indigo-900">
-                      {termMonths} {termMonths === 1 ? "Month" : "Months"}
-                    </span>
-                  </div>
+                  <div className="mt-5 space-y-2 border-t border-gray-200 pt-4 text-sm">
+                    <div className="flex justify-between text-gray-600">
+                      <span>Subtotal</span>
 
-                  {dueDate && (
-                    <div className="mt-1 flex justify-between text-sm">
-                      <span className="text-indigo-600">Due Date</span>
+                      <span>{formatCurrency(subtotal)}</span>
+                    </div>
 
-                      <span className="font-semibold text-indigo-900">
-                        {formatDate(dueDate)}
+                    <div className="flex justify-between text-gray-600">
+                      <span>Discount ({discountRate.toFixed(2)}%)</span>
+
+                      <span className="text-red-600">
+                        - {formatCurrency(discountAmount)}
                       </span>
                     </div>
-                  )}
+
+                    <div className="flex justify-between text-gray-600">
+                      <span>
+                        {taxType === "non_vat" ? "Tax" : "VAT"} (
+                        {taxRate.toFixed(2)}%)
+                      </span>
+
+                      <span className="text-gray-700">
+                        {taxType === "vat_inclusive" ? "" : "+ "}
+                        {formatCurrency(taxAmount)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between border-t border-gray-200 pt-3 text-2xl font-bold text-gray-900">
+                      <span>Total</span>
+
+                      <span>{formatCurrency(total)}</span>
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
 
               {/* NOTES */}
 

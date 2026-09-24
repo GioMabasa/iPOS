@@ -55,6 +55,19 @@ class BirSettingController extends Controller
                 'boolean',
             ],
 
+            'tax_type' => [
+                'required',
+                'string',
+                'in:vat_inclusive,vat_exclusive,non_vat',
+            ],
+
+            'vat_rate' => [
+                'required',
+                'numeric',
+                'min:0',
+                'max:100',
+            ],
+
             'invoice_prefix' => [
                 'required',
                 'string',
@@ -136,6 +149,19 @@ class BirSettingController extends Controller
             'vat_registered' => [
                 'required',
                 'boolean',
+            ],
+
+            'tax_type' => [
+                'required',
+                'string',
+                'in:vat_inclusive,vat_exclusive,non_vat',
+            ],
+
+            'vat_rate' => [
+                'required',
+                'numeric',
+                'min:0',
+                'max:100',
             ],
 
             'invoice_prefix' => [

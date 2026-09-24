@@ -21,6 +21,12 @@ export interface SalesSummary {
   total_sales: number;
   total_cogs: number;
   gross_profit: number;
+  gross_margin: number;
+  cash_sales: number;
+  charge_sales: number;
+  total_discount: number;
+  total_tax: number;
+  
   total_void: number;
   total_refund: number;
 }
@@ -40,8 +46,14 @@ export async function getSales(params?: {
   user_id?: number;
   page?: number;
 }): Promise<SalesListResponse> {
+  const token = localStorage.getItem("ipos_token");
+ 
+
   const response = await api.get("/sales", {
     params,
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+    },
   });
 
   const pagination = response.data.data;
@@ -62,8 +74,14 @@ export async function getSales(params?: {
       total_sales: response.data.summary?.total_sales ?? 0,
       total_cogs: response.data.summary?.total_cogs ?? 0,
       gross_profit: response.data.summary?.gross_profit ?? 0,
+      gross_margin: response.data.summary?.gross_margin ?? 0,
+      cash_sales: response.data.summary?.cash_sales ?? 0,
+      charge_sales: response.data.summary?.charge_sales ?? 0,      
       total_void: response.data.summary?.total_void ?? 0,
       total_refund: response.data.summary?.total_refund ?? 0,
+      total_discount: response.data.summary?.total_discount ?? 0,
+      total_tax: response.data.summary?.total_tax ?? 0,
+     
     },
   };
 }

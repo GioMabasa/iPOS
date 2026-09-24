@@ -33,6 +33,8 @@ export default function Settings() {
     business_name: "",
     business_address: "",
     vat_registered: false,
+    tax_type: "non_vat",
+    vat_rate: 12,
     invoice_prefix: "",
     permit_number: "",
     permit_date: "",
@@ -94,6 +96,8 @@ export default function Settings() {
           business_name: response.data.business_name ?? "",
           business_address: response.data.business_address ?? "",
           vat_registered: response.data.vat_registered ?? false,
+          tax_type: response.data.tax_type ?? "non_vat",
+          vat_rate: response.data.vat_rate ?? 12,
           invoice_prefix: response.data.invoice_prefix ?? "",
           permit_number: response.data.permit_number ?? "",
           permit_date: response.data.permit_date ?? "",
@@ -120,7 +124,7 @@ export default function Settings() {
 
   function handleBirChange(
     field: keyof CreateBirSettingData,
-    value: string | boolean,
+    value: string | boolean | number,
   ) {
     setBirFormData((current) => ({
       ...current,
@@ -187,6 +191,8 @@ export default function Settings() {
           business_name: response.data.business_name ?? "",
           business_address: response.data.business_address ?? "",
           vat_registered: response.data.vat_registered ?? false,
+          tax_type: response.data.tax_type ?? "non_vat",
+          vat_rate: response.data.vat_rate ?? 12,
           invoice_prefix: response.data.invoice_prefix ?? "",
           permit_number: response.data.permit_number ?? "",
           permit_date: response.data.permit_date ?? "",
@@ -508,6 +514,48 @@ export default function Settings() {
               <option value="no">No</option>
               <option value="yes">Yes</option>
             </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Tax Type
+            </label>
+
+            <select
+              value={birFormData.tax_type}
+              onChange={(e) => handleBirChange("tax_type", e.target.value)}
+              disabled={!birFormData.vat_registered}
+              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
+            >
+              <option value="vat_inclusive">VAT Inclusive</option>
+              <option value="vat_exclusive">VAT Exclusive</option>
+              <option value="non_vat">Non-VAT</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              VAT Rate (%)
+            </label>
+
+            <div className="relative">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={birFormData.vat_rate}
+                onChange={(e) =>
+                  handleBirChange("vat_rate", Number(e.target.value))
+                }
+                disabled={!birFormData.vat_registered}
+                className="w-full rounded-lg border px-4 py-2.5 pr-10 text-sm outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
+              />
+
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                %
+              </span>
+            </div>
           </div>
 
           <div>
