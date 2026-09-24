@@ -626,7 +626,7 @@ export default function Customers() {
 
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                Customers
+                Customers Management
               </h1>
 
               <p className="mt-0.5 text-sm text-slate-500">

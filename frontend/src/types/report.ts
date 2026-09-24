@@ -3,7 +3,10 @@ export type ReportPeriod =
     | "yesterday"
     | "this_week"
     | "this_month"
+    | "last_month"
+    | "this_year"
     | "custom";
+
 
 export interface DashboardFilters {
     period: ReportPeriod;

@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\POSProductController;
 use App\Http\Controllers\Api\ReceivableController;
+use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\ExpenseCategoryController;
 
 
 /*
@@ -53,11 +55,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/pos/products', [POSProductController::class, 'index']);
 
 
-
     Route::get(
         '/bir-settings',
         [BirSettingController::class, 'show']
     );
+
 
     /*
     |--------------------------------------------------------------------------
@@ -76,22 +78,23 @@ Route::middleware('auth:sanctum')->group(function () {
     */
 
     Route::middleware('role:admin')->group(function () {
+
         /*
         |--------------------------------------------------------------------------
         | Receivables
         |--------------------------------------------------------------------------
         */
+
         Route::get('/receivables', [ReceivableController::class, 'index']);
         Route::get('/receivables/{id}', [ReceivableController::class, 'show']);
         Route::post('/receivables/{id}/payments', [ReceivableController::class, 'storePayment']);
+
 
         /*
         |--------------------------------------------------------------------------
         | BIR Settings
         |--------------------------------------------------------------------------
         */
-
-
 
         Route::post(
             '/bir-settings',
@@ -103,16 +106,12 @@ Route::middleware('auth:sanctum')->group(function () {
             [BirSettingController::class, 'update']
         );
 
+
         /*
         |--------------------------------------------------------------------------
         | System Settings
         |--------------------------------------------------------------------------
         */
-
-        Route::get(
-            '/settings',
-            [SettingController::class, 'show']
-        );
 
         Route::put(
             '/settings',
@@ -139,6 +138,7 @@ Route::middleware('auth:sanctum')->group(function () {
             '/inventory/{product}/status',
             [InventoryController::class, 'updateStatus']
         );
+
 
         /*
         |--------------------------------------------------------------------------
@@ -297,6 +297,53 @@ Route::middleware('auth:sanctum')->group(function () {
             '/reports/inventory/transactions',
             [ReportController::class, 'inventoryTransactions']
         );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Expenses
+        |--------------------------------------------------------------------------
+        */
+
+        Route::apiResource(
+            'expense-categories',
+            ExpenseCategoryController::class
+        );
+
+        Route::get(
+            '/expenses',
+            [ExpenseController::class, 'index']
+        );
+
+        Route::post(
+            '/expenses',
+            [ExpenseController::class, 'store']
+        );
+
+        Route::get(
+            '/expenses/summary',
+            [ExpenseController::class, 'summary']
+        );
+
+        Route::get(
+            '/expenses/{expense}',
+            [ExpenseController::class, 'show']
+        );
+
+        Route::put(
+            '/expenses/{expense}',
+            [ExpenseController::class, 'update']
+        );
+
+        Route::patch(
+            '/expenses/{expense}',
+            [ExpenseController::class, 'update']
+        );
+
+        Route::post(
+            '/expenses/{expense}/void',
+            [ExpenseController::class, 'void']
+        );
     });
 
 
@@ -310,9 +357,22 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
+        | System Settings
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/settings',
+            [SettingController::class, 'show']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Inventory
         |--------------------------------------------------------------------------
         */
+
         Route::get(
             '/inventory',
             [InventoryController::class, 'index']
@@ -367,17 +427,25 @@ Route::middleware('auth:sanctum')->group(function () {
             [SaleController::class, 'invoice']
         );
 
-        Route::get('/reports/sales/void-refund', [ReportController::class, 'voidRefundHistory']);
+        Route::get(
+            '/reports/sales/void-refund',
+            [ReportController::class, 'voidRefundHistory']
+        );
 
-        Route::get('/reports/inventory/movement', [ReportController::class, 'inventoryMovement']);
+        Route::get(
+            '/reports/inventory/movement',
+            [ReportController::class, 'inventoryMovement']
+        );
 
         Route::get(
             '/reports/inventory/movement/summary',
             [ReportController::class, 'inventoryMovementSummary']
         );
 
-        Route::get('/reports/dashboard', [ReportController::class, 'dashboard']);
-
+        Route::get(
+            '/reports/dashboard',
+            [ReportController::class, 'dashboard']
+        );
 
         Route::get(
             '/reports/sales-trend',

@@ -348,7 +348,7 @@ export default function Products() {
 
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-                Products
+                Products Management
               </h1>
 
               <p className="mt-0.5 text-sm text-gray-500">

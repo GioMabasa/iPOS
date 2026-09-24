@@ -621,7 +621,7 @@ export default function Suppliers() {
 
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Suppliers
+              Suppliers Management
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">

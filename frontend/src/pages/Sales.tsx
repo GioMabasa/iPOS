@@ -1410,7 +1410,7 @@ export default function Sales() {
                       d="M5 21h14"
                     />
                   </svg>
-                  Export to Spreadsheet
+                  Export Sales to Spreadsheet
                 </>
               )}
             </button>

@@ -21,6 +21,8 @@ import Sales from "../pages/Sales";
 import Reports from "../pages/Reports";
 import Settings from "../pages/Settings";
 import Receivables from "../pages/Receivables";
+import ExpenseCategories from "../pages/ExpenseCategories";
+import Expenses from "../pages/Expenses";
 
 import ApprovalRequests from "../pages/ApprovalRequests";
 
@@ -77,6 +79,8 @@ export default function AppRoutes() {
           <Route path="/approval-requests" element={<ApprovalRequests />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/expense-categories" element={<ExpenseCategories />} />
+          <Route path="/expenses" element={<Expenses />} />
         </Route>
 
         {/* Admin only */}

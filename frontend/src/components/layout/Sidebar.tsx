@@ -21,36 +21,6 @@ const menuItems: MenuItem[] = [
     roles: ["admin", "manager", "cashier"],
   },
   {
-    label: "Products",
-    path: "/products",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Categories",
-    path: "/categories",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Suppliers",
-    path: "/suppliers",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Customers",
-    path: "/customers",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Purchases",
-    path: "/purchases",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Inventory",
-    path: "/inventory",
-    roles: ["admin", "manager"],
-  },
-  {
     label: "Sales",
     path: "/sales",
     roles: ["admin", "manager", "cashier"],
@@ -58,6 +28,41 @@ const menuItems: MenuItem[] = [
   {
     label: "Receivables",
     path: "/receivables",
+    roles: ["admin", "manager"],
+  },
+  {
+    label: "Expense",
+    path: "/expenses",
+    roles: ["admin", "manager"],
+  },
+  {
+    label: "Product Management",
+    path: "/products",
+    roles: ["admin", "manager"],
+  },
+  {
+    label: "Category Management",
+    path: "/categories",
+    roles: ["admin", "manager"],
+  },
+  {
+    label: "Supplier Management",
+    path: "/suppliers",
+    roles: ["admin", "manager"],
+  },
+  {
+    label: "Purchase Management",
+    path: "/purchases",
+    roles: ["admin", "manager"],
+  },
+  {
+    label: "Inventory Management",
+    path: "/inventory",
+    roles: ["admin", "manager"],
+  },
+  {
+    label: "Customer Management",
+    path: "/customers",
     roles: ["admin", "manager"],
   },
   {
@@ -71,7 +76,12 @@ const menuItems: MenuItem[] = [
     roles: ["admin", "manager"],
   },
   {
-    label: "Settings",
+    label: "Expense Category Management",
+    path: "/expense-categories",
+    roles: ["admin", "manager"],
+  },
+  {
+    label: "System Settings",
     path: "/settings",
     roles: ["admin"],
   },
@@ -138,10 +148,41 @@ function CategoriesIcon() {
       className="h-5 w-5"
       aria-hidden="true"
     >
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      <path d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 15h6v4h-6z" />
+      <path d="M10 8h4M10 18h4" />
+    </svg>
+  );
+}
+
+function ExpenseCategoriesIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-5 w-5"
+      aria-hidden="true"
+    >
+      <path d="M4 5h16M4 12h10M4 19h16" />
+      <circle cx="18" cy="12" r="2" />
+    </svg>
+  );
+}
+
+function ExpensesIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-5 w-5"
+      aria-hidden="true"
+    >
+      <path d="M6 3h12v18H6z" />
+      <path d="M9 7h6M9 11h6M9 15h3" />
+      <path d="m15 16 2 2 3-3" />
     </svg>
   );
 }
@@ -302,17 +343,21 @@ function getMenuIcon(label: string) {
       return <DashboardIcon />;
     case "POS":
       return <PosIcon />;
-    case "Products":
+    case "Product Management":
       return <ProductsIcon />;
-    case "Categories":
+    case "Category Management":
       return <CategoriesIcon />;
-    case "Suppliers":
+    case "Expense Category Management":
+      return <ExpenseCategoriesIcon />;
+    case "Expense":
+      return <ExpensesIcon />;
+    case "Supplier Management":
       return <SuppliersIcon />;
-    case "Customers":
+    case "Customer Management":
       return <CustomersIcon />;
-    case "Purchases":
+    case "Purchase Management":
       return <PurchasesIcon />;
-    case "Inventory":
+    case "Inventory Management":
       return <InventoryIcon />;
     case "Sales":
       return <SalesIcon />;
@@ -322,7 +367,7 @@ function getMenuIcon(label: string) {
       return <ApprovalIcon />;
     case "Reports":
       return <ReportsIcon />;
-    case "Settings":
+    case "System Settings":
       return <SettingsIcon />;
     default:
       return <DashboardIcon />;
@@ -332,31 +377,35 @@ function getMenuIcon(label: string) {
 function getIconStyle(label: string) {
   switch (label) {
     case "Dashboard":
-      return "bg-sky-50 text-sky-600";
+      return "bg-sky-100 text-sky-600";
     case "POS":
       return "bg-violet-50 text-violet-600";
-    case "Products":
+    case "Product Management":
       return "bg-emerald-50 text-emerald-600";
-    case "Categories":
-      return "bg-amber-50 text-amber-600";
-    case "Suppliers":
+    case "Category Management":
+      return "bg-orange-100 text-orange-600";
+    case "Expense Category Management":
+      return "bg-rose-100 text-rose-600";
+    case "Expense":
+      return "bg-red-100 text-red-600";
+    case "Supplier Management":
       return "bg-orange-50 text-orange-600";
-    case "Customers":
+    case "Customer Management":
       return "bg-pink-50 text-pink-600";
-    case "Purchases":
+    case "Purchase Management":
       return "bg-cyan-50 text-cyan-600";
-    case "Inventory":
+    case "Inventory Management":
       return "bg-indigo-50 text-indigo-600";
     case "Sales":
-      return "bg-green-50 text-green-600";
+      return "bg-green-100 text-green-600";
     case "Receivables":
-      return "bg-yellow-50 text-yellow-600";
+      return "bg-amber-100 text-amber-600";
     case "Approval Requests":
       return "bg-rose-50 text-rose-600";
     case "Reports":
       return "bg-blue-50 text-blue-600";
-    case "Settings":
-      return "bg-slate-100 text-slate-600";
+    case "System Settings":
+      return "bg-indigo-100 text-indigo-600";
     default:
       return "bg-slate-100 text-slate-600";
   }
@@ -417,14 +466,14 @@ export default function Sidebar() {
           </p>
         </div>
 
-        <ul className="space-y-1">
+        <ul className="space-y-0.5">
           {visibleItems.map((item) => (
             <li key={item.path}>
               <NavLink
                 to={item.path}
                 end={item.path === "/"}
                 className={({ isActive }) =>
-                  `group flex min-h-9.5 items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  `group flex min-h-8.5 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
                     isActive
                       ? "bg-indigo-50 text-indigo-700"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -434,7 +483,7 @@ export default function Sidebar() {
                 {({ isActive }) => (
                   <>
                     <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition ${
                         isActive
                           ? "bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100"
                           : `${getIconStyle(item.label)} group-hover:scale-105`
