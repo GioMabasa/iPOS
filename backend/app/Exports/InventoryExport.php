@@ -2,9 +2,10 @@
 
 namespace App\Exports;
 
+use App\Services\InventoryCalculationService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\FromGenerator;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -12,36 +13,31 @@ use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Font;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, WithEvents
+class InventoryExport implements
+    FromGenerator,
+    WithHeadings,
+    WithEvents
 {
-    protected Collection $data;
+    protected Builder $productQuery;
 
-    public function __construct(Collection $data)
-    {
-        $this->data = $data;
-    }
+    protected string $stockFilter;
 
-    public function collection(): Collection
-    {
-        return $this->data->map(function (array $product) {
-            return [
-                $product['name'],
-                $product['sku'],
-                $product['barcode'],
-                $product['supplier'],
-                $product['minimum_stock'] ?? 0,
-                $product['stock'] ?? 0,
-                $product['unit'],
-                $product['stock_value'] ?? 0,
-                $product['cost'] ?? 0,
-                $product['selling_price'] ?? 0,
-                $product['stock_status'],
-                $product['product_status'],
-            ];
-        });
+    protected string $supplierLabel;
+
+    /**
+     * Number of products loaded from the database per batch.
+     */
+    protected int $batchSize = 500;
+
+    public function __construct(
+        Builder $productQuery,
+        string $stockFilter = 'all',
+        string $supplierLabel = 'All Suppliers'
+    ) {
+        $this->productQuery = $productQuery;
+        $this->stockFilter = $stockFilter;
+        $this->supplierLabel = $supplierLabel;
     }
 
     public function headings(): array
@@ -62,85 +58,172 @@ class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, W
         ];
     }
 
+    public function generator(): \Generator
+    {
+        $inventoryCalculationService = app(
+            InventoryCalculationService::class
+        );
+
+        $products = $this->productQuery
+            ->clone()
+            ->with('suppliers')
+            ->lazy(
+                $this->batchSize
+            );
+
+        $productBatch = collect();
+
+        foreach ($products as $product) {
+            $productBatch->push($product);
+
+            if ($productBatch->count() < $this->batchSize) {
+                continue;
+            }
+
+            yield from $this->generateRowsFromBatch(
+                $productBatch,
+                $inventoryCalculationService
+            );
+
+            $productBatch = collect();
+
+            unset($product);
+        }
+
+        if ($productBatch->isNotEmpty()) {
+            yield from $this->generateRowsFromBatch(
+                $productBatch,
+                $inventoryCalculationService
+            );
+
+            $productBatch = collect();
+        }
+    }
+
+    protected function generateRowsFromBatch(
+        Collection $products,
+        InventoryCalculationService $inventoryCalculationService
+    ): \Generator {
+        if ($products->isEmpty()) {
+            return;
+        }
+
+        $inventoryData = $inventoryCalculationService
+            ->calculate($products);
+
+        foreach ($inventoryData as $inventory) {
+            $stock = (float) $inventory['stock'];
+
+            $isLowStock = (bool) $inventory['is_low_stock'];
+
+            $stockStatus = $stock <= 0
+                ? 'Out of Stock'
+                : (
+                    $isLowStock
+                    ? 'Low Stock'
+                    : 'In Stock'
+                );
+
+            $include = match ($this->stockFilter) {
+                'in_stock' =>
+                $stock > 0 &&
+                    !$isLowStock,
+
+                'low_stock' =>
+                $isLowStock &&
+                    $stock > 0,
+
+                'out_of_stock' =>
+                $stock <= 0,
+
+                default =>
+                true,
+            };
+
+            if (!$include) {
+                continue;
+            }
+
+            yield [
+                $inventory['name'],
+                $inventory['sku'],
+                $inventory['barcode'],
+                $inventory['supplier'],
+                $inventory['minimum_stock'],
+                $stock,
+                $inventory['unit'],
+                $inventory['stock_value'],
+                $inventory['cost'],
+                $inventory['selling_price'],
+                $stockStatus,
+                $inventory['is_active']
+                    ? 'Active'
+                    : 'Inactive',
+            ];
+        }
+
+        unset($inventoryData);
+    }
+
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
 
-                /*
-                |--------------------------------------------------------------------------
-                | Original Table Row
-                |--------------------------------------------------------------------------
-                */
-
                 $originalHighestRow = $sheet->getHighestRow();
 
-                /*
-                |--------------------------------------------------------------------------
-                | Summary Calculations
-                |--------------------------------------------------------------------------
-                */
+                $totalProducts = max(
+                    0,
+                    $originalHighestRow - 1
+                );
 
-                $totalProducts = $this->data->count();
+                $inStock = 0;
+                $lowStock = 0;
+                $outOfStock = 0;
+                $stockValue = 0.0;
 
-                $inStock = $this->data->filter(function (array $product) {
-                    return trim((string) ($product['stock_status'] ?? '')) === 'In Stock';
-                })->count();
+                $dataStartOriginal = 2;
 
-                $lowStock = $this->data->filter(function (array $product) {
-                    return trim((string) ($product['stock_status'] ?? '')) === 'Low Stock';
-                })->count();
+                for (
+                    $row = $dataStartOriginal;
+                    $row <= $originalHighestRow;
+                    $row++
+                ) {
+                    $stockStatus = trim(
+                        (string) $sheet
+                            ->getCell("K{$row}")
+                            ->getValue()
+                    );
 
-                $outOfStock = $this->data->filter(function (array $product) {
-                    return trim((string) ($product['stock_status'] ?? '')) === 'Out of Stock';
-                })->count();
+                    if ($stockStatus === 'In Stock') {
+                        $inStock++;
+                    } elseif ($stockStatus === 'Low Stock') {
+                        $lowStock++;
+                    } elseif ($stockStatus === 'Out of Stock') {
+                        $outOfStock++;
+                    }
 
-                $stockValue = $this->data->sum(function (array $product) {
-                    return (float) ($product['stock_value'] ?? 0);
-                });
-
-                /*
-                |--------------------------------------------------------------------------
-                | Supplier Summary
-                |--------------------------------------------------------------------------
-                */
-
-                $suppliers = $this->data
-                    ->map(function (array $product) {
-                        return trim((string) ($product['supplier'] ?? ''));
-                    })
-                    ->filter()
-                    ->unique()
-                    ->values();
-
-                if ($suppliers->count() === 1) {
-                    $supplierLabel = $suppliers->first();
-                } else {
-                    $supplierLabel = 'All Suppliers';
+                    $stockValue += (float) (
+                        $sheet
+                        ->getCell("H{$row}")
+                        ->getValue() ?? 0
+                    );
                 }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Move Detailed Table Down
-                |--------------------------------------------------------------------------
-                */
 
                 $sheet->insertNewRowBefore(1, 7);
 
                 $highestRow = $originalHighestRow + 7;
+
                 $headerRow = 8;
                 $dataStartRow = 9;
 
-                /*
-                |--------------------------------------------------------------------------
-                | Main Title
-                |--------------------------------------------------------------------------
-                */
-
                 $sheet->mergeCells('A1:L1');
 
-                $sheet->setCellValue('A1', 'INVENTORY SUMMARY');
+                $sheet->setCellValue(
+                    'A1',
+                    'INVENTORY SUMMARY'
+                );
 
                 $sheet->getStyle('A1:L1')->applyFromArray([
                     'font' => [
@@ -162,19 +245,15 @@ class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, W
                     ],
                 ]);
 
-                $sheet->getRowDimension(1)->setRowHeight(32);
-
-                /*
-                |--------------------------------------------------------------------------
-                | Supplier Row
-                |--------------------------------------------------------------------------
-                */
+                $sheet
+                    ->getRowDimension(1)
+                    ->setRowHeight(32);
 
                 $sheet->mergeCells('A2:L2');
 
                 $sheet->setCellValue(
                     'A2',
-                    'Supplier: ' . $supplierLabel
+                    'Supplier: ' . $this->supplierLabel
                 );
 
                 $sheet->getStyle('A2:L2')->applyFromArray([
@@ -197,13 +276,9 @@ class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, W
                     ],
                 ]);
 
-                $sheet->getRowDimension(2)->setRowHeight(22);
-
-                /*
-                |--------------------------------------------------------------------------
-                | Summary Cards
-                |--------------------------------------------------------------------------
-                */
+                $sheet
+                    ->getRowDimension(2)
+                    ->setRowHeight(22);
 
                 $cards = [
                     [
@@ -259,8 +334,13 @@ class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, W
                         $startCell,
                         $card['label'] . "\n" . (
                             $card['label'] === 'Stock Value'
-                            ? number_format((float) $card['value'], 2)
-                            : number_format((int) $card['value'])
+                            ? number_format(
+                                (float) $card['value'],
+                                2
+                            )
+                            : number_format(
+                                (int) $card['value']
+                            )
                         )
                     );
 
@@ -293,25 +373,29 @@ class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, W
                         ],
                     ]);
 
-                    $sheet->getStyle($startCell)->getFont()
+                    $sheet
+                        ->getStyle($startCell)
+                        ->getFont()
                         ->setBold(true)
                         ->setSize(12)
                         ->getColor()
                         ->setARGB($card['valueColor']);
                 }
 
-                $sheet->getRowDimension(4)->setRowHeight(25);
-                $sheet->getRowDimension(5)->setRowHeight(25);
+                $sheet
+                    ->getRowDimension(4)
+                    ->setRowHeight(25);
 
-                /*
-                |--------------------------------------------------------------------------
-                | Inventory Details Section
-                |--------------------------------------------------------------------------
-                */
+                $sheet
+                    ->getRowDimension(5)
+                    ->setRowHeight(25);
 
                 $sheet->mergeCells('A7:L7');
 
-                $sheet->setCellValue('A7', 'INVENTORY DETAILS');
+                $sheet->setCellValue(
+                    'A7',
+                    'INVENTORY DETAILS'
+                );
 
                 $sheet->getStyle('A7:L7')->applyFromArray([
                     'font' => [
@@ -333,219 +417,64 @@ class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, W
                     ],
                 ]);
 
-                $sheet->getRowDimension(7)->setRowHeight(24);
+                $sheet
+                    ->getRowDimension(7)
+                    ->setRowHeight(24);
 
-                /*
-                |--------------------------------------------------------------------------
-                | Table Header
-                |--------------------------------------------------------------------------
-                */
-
-                $sheet->getStyle("A{$headerRow}:L{$headerRow}")->applyFromArray([
-                    'font' => [
-                        'bold' => true,
-                        'color' => [
-                            'argb' => 'FFFFFFFF',
-                        ],
-                        'size' => 10,
-                    ],
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => [
-                            'argb' => 'FF4F46E5',
-                        ],
-                    ],
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_CENTER,
-                        'vertical' => Alignment::VERTICAL_CENTER,
-                        'wrapText' => true,
-                    ],
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => Border::BORDER_THIN,
+                $sheet
+                    ->getStyle("A{$headerRow}:L{$headerRow}")
+                    ->applyFromArray([
+                        'font' => [
+                            'bold' => true,
                             'color' => [
-                                'argb' => 'FFD1D5DB',
+                                'argb' => 'FFFFFFFF',
+                            ],
+                            'size' => 10,
+                        ],
+                        'fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => [
+                                'argb' => 'FF4F46E5',
                             ],
                         ],
-                    ],
-                ]);
+                        'alignment' => [
+                            'horizontal' => Alignment::HORIZONTAL_CENTER,
+                            'vertical' => Alignment::VERTICAL_CENTER,
+                            'wrapText' => true,
+                        ],
+                        'borders' => [
+                            'allBorders' => [
+                                'borderStyle' => Border::BORDER_THIN,
+                                'color' => [
+                                    'argb' => 'FFD1D5DB',
+                                ],
+                            ],
+                        ],
+                    ]);
 
-                $sheet->getRowDimension($headerRow)->setRowHeight(28);
-
-                /*
-                |--------------------------------------------------------------------------
-                | Barcode as Text
-                |--------------------------------------------------------------------------
-                */
-
-                for ($row = $dataStartRow; $row <= $highestRow; $row++) {
-                    $barcode = $sheet->getCell("C{$row}")->getValue();
-
-                    if ($barcode !== null && $barcode !== '') {
-                        $sheet->setCellValueExplicit(
-                            "C{$row}",
-                            (string) $barcode,
-                            DataType::TYPE_STRING
-                        );
-                    }
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Make Zero Values Visible
-                |--------------------------------------------------------------------------
-                */
-
-                for ($row = $dataStartRow; $row <= $highestRow; $row++) {
-                    // Stock
-                    if (
-                        $sheet->getCell("F{$row}")->getValue() === null ||
-                        $sheet->getCell("F{$row}")->getValue() === ''
-                    ) {
-                        $sheet->setCellValueExplicit(
-                            "F{$row}",
-                            '0',
-                            DataType::TYPE_NUMERIC
-                        );
-                    }
-
-                    // Stock Value
-                    if (
-                        $sheet->getCell("H{$row}")->getValue() === null ||
-                        $sheet->getCell("H{$row}")->getValue() === ''
-                    ) {
-                        $sheet->setCellValueExplicit(
-                            "H{$row}",
-                            '0',
-                            DataType::TYPE_NUMERIC
-                        );
-                    }
-
-                    // Cost
-                    if (
-                        $sheet->getCell("I{$row}")->getValue() === null ||
-                        $sheet->getCell("I{$row}")->getValue() === ''
-                    ) {
-                        $sheet->setCellValueExplicit(
-                            "I{$row}",
-                            '0',
-                            DataType::TYPE_NUMERIC
-                        );
-                    }
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Currency Formatting
-                |--------------------------------------------------------------------------
-                */
+                $sheet
+                    ->getRowDimension($headerRow)
+                    ->setRowHeight(28);
 
                 if ($highestRow >= $dataStartRow) {
-                    $sheet->getStyle("H{$dataStartRow}:J{$highestRow}")
+                    $sheet
+                        ->getStyle(
+                            "H{$dataStartRow}:J{$highestRow}"
+                        )
                         ->getNumberFormat()
                         ->setFormatCode('#,##0.00');
 
-                    $sheet->getStyle("E{$dataStartRow}:F{$highestRow}")
+                    $sheet
+                        ->getStyle(
+                            "E{$dataStartRow}:F{$highestRow}"
+                        )
                         ->getNumberFormat()
                         ->setFormatCode('#,##0');
-                }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Stock Status Colors
-                |--------------------------------------------------------------------------
-                */
-
-                for ($row = $dataStartRow; $row <= $highestRow; $row++) {
-                    $stockStatus = trim(
-                        (string) $sheet->getCell("K{$row}")->getValue()
-                    );
-
-                    if ($stockStatus === 'In Stock') {
-                        $sheet->getStyle("K{$row}")
-                            ->getFill()
-                            ->setFillType(Fill::FILL_SOLID)
-                            ->getStartColor()
-                            ->setARGB('FFDCFCE7');
-
-                        $sheet->getStyle("K{$row}")
-                            ->getFont()
-                            ->setBold(true)
-                            ->getColor()
-                            ->setARGB('FF15803D');
-                    } elseif ($stockStatus === 'Low Stock') {
-                        $sheet->getStyle("K{$row}")
-                            ->getFill()
-                            ->setFillType(Fill::FILL_SOLID)
-                            ->getStartColor()
-                            ->setARGB('FFFEF3C7');
-
-                        $sheet->getStyle("K{$row}")
-                            ->getFont()
-                            ->setBold(true)
-                            ->getColor()
-                            ->setARGB('FFD97706');
-                    } elseif ($stockStatus === 'Out of Stock') {
-                        $sheet->getStyle("K{$row}")
-                            ->getFill()
-                            ->setFillType(Fill::FILL_SOLID)
-                            ->getStartColor()
-                            ->setARGB('FFFEE2E2');
-
-                        $sheet->getStyle("K{$row}")
-                            ->getFont()
-                            ->setBold(true)
-                            ->getColor()
-                            ->setARGB('FFDC2626');
-                    }
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Product Status Colors
-                |--------------------------------------------------------------------------
-                */
-
-                for ($row = $dataStartRow; $row <= $highestRow; $row++) {
-                    $productStatus = trim(
-                        (string) $sheet->getCell("L{$row}")->getValue()
-                    );
-
-                    if ($productStatus === 'Active') {
-                        $sheet->getStyle("L{$row}")
-                            ->getFill()
-                            ->setFillType(Fill::FILL_SOLID)
-                            ->getStartColor()
-                            ->setARGB('FFDCFCE7');
-
-                        $sheet->getStyle("L{$row}")
-                            ->getFont()
-                            ->setBold(true)
-                            ->getColor()
-                            ->setARGB('FF15803D');
-                    } elseif ($productStatus === 'Inactive') {
-                        $sheet->getStyle("L{$row}")
-                            ->getFill()
-                            ->setFillType(Fill::FILL_SOLID)
-                            ->getStartColor()
-                            ->setARGB('FFFEE2E2');
-
-                        $sheet->getStyle("L{$row}")
-                            ->getFont()
-                            ->setBold(true)
-                            ->getColor()
-                            ->setARGB('FFB91C1C');
-                    }
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Body Formatting
-                |--------------------------------------------------------------------------
-                */
-
-                if ($highestRow >= $dataStartRow) {
-                    $sheet->getStyle("A{$dataStartRow}:L{$highestRow}")
+                    $sheet
+                        ->getStyle(
+                            "A{$dataStartRow}:L{$highestRow}"
+                        )
                         ->applyFromArray([
                             'borders' => [
                                 'bottom' => [
@@ -560,24 +489,175 @@ class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, W
                             ],
                         ]);
 
-                    $sheet->getStyle("A{$dataStartRow}:D{$highestRow}")
+                    $sheet
+                        ->getStyle(
+                            "A{$dataStartRow}:D{$highestRow}"
+                        )
                         ->getAlignment()
-                        ->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                        ->setHorizontal(
+                            Alignment::HORIZONTAL_LEFT
+                        );
 
-                    $sheet->getStyle("E{$dataStartRow}:J{$highestRow}")
+                    $sheet
+                        ->getStyle(
+                            "E{$dataStartRow}:J{$highestRow}"
+                        )
                         ->getAlignment()
-                        ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                        ->setHorizontal(
+                            Alignment::HORIZONTAL_RIGHT
+                        );
 
-                    $sheet->getStyle("K{$dataStartRow}:L{$highestRow}")
+                    $sheet
+                        ->getStyle(
+                            "K{$dataStartRow}:L{$highestRow}"
+                        )
                         ->getAlignment()
-                        ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                        ->setHorizontal(
+                            Alignment::HORIZONTAL_CENTER
+                        );
                 }
 
                 /*
                 |--------------------------------------------------------------------------
-                | Column Widths
+                | Row-Level Formatting
                 |--------------------------------------------------------------------------
+                |
+                | Barcode formatting, stock status styling, product status
+                | styling, and row height are handled in one worksheet pass.
+                |
                 */
+
+                for (
+                    $row = $dataStartRow;
+                    $row <= $highestRow;
+                    $row++
+                ) {
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Barcode
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $barcode = $sheet
+                        ->getCell("C{$row}")
+                        ->getValue();
+
+                    if ($barcode !== null && $barcode !== '') {
+                        $sheet->setCellValueExplicit(
+                            "C{$row}",
+                            (string) $barcode,
+                            DataType::TYPE_STRING
+                        );
+                    }
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Stock Status
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $stockStatus = trim(
+                        (string) $sheet
+                            ->getCell("K{$row}")
+                            ->getValue()
+                    );
+
+                    if ($stockStatus === 'In Stock') {
+                        $sheet
+                            ->getStyle("K{$row}")
+                            ->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()
+                            ->setARGB('FFDCFCE7');
+
+                        $sheet
+                            ->getStyle("K{$row}")
+                            ->getFont()
+                            ->setBold(true)
+                            ->getColor()
+                            ->setARGB('FF15803D');
+                    } elseif ($stockStatus === 'Low Stock') {
+                        $sheet
+                            ->getStyle("K{$row}")
+                            ->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()
+                            ->setARGB('FFFEF3C7');
+
+                        $sheet
+                            ->getStyle("K{$row}")
+                            ->getFont()
+                            ->setBold(true)
+                            ->getColor()
+                            ->setARGB('FFD97706');
+                    } elseif ($stockStatus === 'Out of Stock') {
+                        $sheet
+                            ->getStyle("K{$row}")
+                            ->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()
+                            ->setARGB('FFFEE2E2');
+
+                        $sheet
+                            ->getStyle("K{$row}")
+                            ->getFont()
+                            ->setBold(true)
+                            ->getColor()
+                            ->setARGB('FFDC2626');
+                    }
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Product Status
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $productStatus = trim(
+                        (string) $sheet
+                            ->getCell("L{$row}")
+                            ->getValue()
+                    );
+
+                    if ($productStatus === 'Active') {
+                        $sheet
+                            ->getStyle("L{$row}")
+                            ->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()
+                            ->setARGB('FFDCFCE7');
+
+                        $sheet
+                            ->getStyle("L{$row}")
+                            ->getFont()
+                            ->setBold(true)
+                            ->getColor()
+                            ->setARGB('FF15803D');
+                    } elseif ($productStatus === 'Inactive') {
+                        $sheet
+                            ->getStyle("L{$row}")
+                            ->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()
+                            ->setARGB('FFFEE2E2');
+
+                        $sheet
+                            ->getStyle("L{$row}")
+                            ->getFont()
+                            ->setBold(true)
+                            ->getColor()
+                            ->setARGB('FFB91C1C');
+                    }
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Row Height
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $sheet
+                        ->getRowDimension($row)
+                        ->setRowHeight(22);
+                }
 
                 $widths = [
                     'A' => 32,
@@ -595,23 +675,12 @@ class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, W
                 ];
 
                 foreach ($widths as $column => $width) {
-                    $sheet->getColumnDimension($column)
+                    $sheet
+                        ->getColumnDimension($column)
                         ->setWidth($width);
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Freeze Panes
-                |--------------------------------------------------------------------------
-                */
-
                 $sheet->freezePane('A9');
-
-                /*
-                |--------------------------------------------------------------------------
-                | Auto Filter
-                |--------------------------------------------------------------------------
-                */
 
                 if ($highestRow >= $headerRow) {
                     $sheet->setAutoFilter(
@@ -619,42 +688,25 @@ class InventoryExport implements FromCollection, WithHeadings, ShouldAutoSize, W
                     );
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Tab Color
-                |--------------------------------------------------------------------------
-                */
-
-                $sheet->getTabColor()->setRGB('4F46E5');
-
-                /*
-                |--------------------------------------------------------------------------
-                | Print / View
-                |--------------------------------------------------------------------------
-                */
+                $sheet
+                    ->getTabColor()
+                    ->setRGB('4F46E5');
 
                 $sheet->setShowGridlines(false);
 
-                $sheet->getPageSetup()
+                $sheet
+                    ->getPageSetup()
                     ->setOrientation(
                         \PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE
                     );
 
-                $sheet->getPageSetup()
+                $sheet
+                    ->getPageSetup()
                     ->setFitToWidth(1);
 
-                $sheet->getPageSetup()
+                $sheet
+                    ->getPageSetup()
                     ->setFitToHeight(0);
-
-                /*
-                |--------------------------------------------------------------------------
-                | Row Heights
-                |--------------------------------------------------------------------------
-                */
-
-                for ($row = $dataStartRow; $row <= $highestRow; $row++) {
-                    $sheet->getRowDimension($row)->setRowHeight(22);
-                }
             },
         ];
     }

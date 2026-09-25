@@ -8,6 +8,7 @@ use App\Models\InventoryTransaction;
 use App\Models\Product;
 use App\Models\SaleItemCost;
 use App\Services\InventoryService;
+use App\Services\InventoryCalculationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -18,7 +19,8 @@ class InventoryController extends Controller
 {
     public function index(
         Request $request,
-        InventoryService $inventoryService
+        InventoryService $inventoryService,
+        InventoryCalculationService $inventoryCalculationService
     ): JsonResponse {
         $validated = $request->validate([
             'page' => [
@@ -124,191 +126,18 @@ class InventoryController extends Controller
             ]);
         }
 
-        $productIds = $products
-            ->pluck('id')
-            ->values();
-
         /*
         |--------------------------------------------------------------------------
-        | Get Current Stock In One Query
+        | Calculate Inventory Data
         |--------------------------------------------------------------------------
         |
-        | Instead of calling InventoryService::getCurrentStock() once per
-        | product, calculate stock for all products with one grouped query.
+        | InventoryCalculationService is now the shared source of truth
+        | for stock, FIFO cost, stock value, and low-stock calculation.
         |
         */
 
-        $stockByProduct = InventoryTransaction::query()
-            ->whereIn('product_id', $productIds)
-            ->select('product_id')
-            ->selectRaw("
-                COALESCE(SUM(
-                    CASE
-                        WHEN type IN ('purchase', 'refund') THEN quantity
-                        WHEN type IN ('sale', 'bad_order') THEN -quantity
-                        WHEN type = 'adjustment' THEN quantity
-                        ELSE 0
-                    END
-                ), 0) AS stock
-            ")
-            ->groupBy('product_id')
-            ->pluck('stock', 'product_id')
-            ->map(fn($stock) => (float) $stock);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Get Purchase Transactions In Bulk
-        |--------------------------------------------------------------------------
-        |
-        | These are the FIFO inventory layers used to calculate current cost
-        | and stock value.
-        |
-        */
-
-        $purchaseTransactions = InventoryTransaction::query()
-            ->whereIn('product_id', $productIds)
-            ->where('type', 'purchase')
-            ->orderBy('product_id')
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->get([
-                'id',
-                'product_id',
-                'quantity',
-                'unit_cost',
-                'created_at',
-            ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Get Sale Cost Allocations In Bulk
-        |--------------------------------------------------------------------------
-        |
-        | Instead of querying SaleItemCost once for every purchase transaction,
-        | load all allocations with one grouped query.
-        |
-        */
-
-        $allocatedByTransaction = collect();
-
-        if ($purchaseTransactions->isNotEmpty()) {
-            $allocatedByTransaction = SaleItemCost::query()
-                ->whereIn(
-                    'inventory_transaction_id',
-                    $purchaseTransactions->pluck('id')
-                )
-                ->select('inventory_transaction_id')
-                ->selectRaw("
-                    COALESCE(
-                        SUM(quantity - reversed_quantity),
-                        0
-                    ) AS allocated_quantity
-                ")
-                ->groupBy('inventory_transaction_id')
-                ->pluck(
-                    'allocated_quantity',
-                    'inventory_transaction_id'
-                )
-                ->map(fn($quantity) => (float) $quantity);
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Build FIFO Layers By Product
-        |--------------------------------------------------------------------------
-        */
-
-        $layersByProduct = [];
-
-        foreach ($purchaseTransactions as $transaction) {
-            $purchasedQuantity = (float) $transaction->quantity;
-
-            $allocatedQuantity = $allocatedByTransaction->get(
-                $transaction->id,
-                0.0
-            );
-
-            $remainingQuantity = max(
-                0,
-                $purchasedQuantity - $allocatedQuantity
-            );
-
-            if ($remainingQuantity <= 0) {
-                continue;
-            }
-
-            $layersByProduct[$transaction->product_id][] = [
-                'quantity' => $remainingQuantity,
-                'unit_cost' => (float) $transaction->unit_cost,
-            ];
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Build Inventory Data
-        |--------------------------------------------------------------------------
-        */
-
-        $data = $products
-            ->map(function (Product $product) use (
-                $stockByProduct,
-                $layersByProduct
-            ) {
-                $stock = $stockByProduct->get(
-                    $product->id,
-                    0.0
-                );
-
-                $minimumStock = (float) $product->minimum_stock;
-
-                $remainingStock = max(0, $stock);
-                $inventoryValue = 0.0;
-
-                $layers = $layersByProduct[$product->id] ?? [];
-
-                foreach ($layers as $layer) {
-                    if ($remainingStock <= 0) {
-                        break;
-                    }
-
-                    $layerQuantity = min(
-                        $remainingStock,
-                        $layer['quantity']
-                    );
-
-                    $inventoryValue += round(
-                        $layerQuantity * $layer['unit_cost'],
-                        2
-                    );
-
-                    $remainingStock -= $layerQuantity;
-                }
-
-                $cost = $stock > 0
-                    ? round($inventoryValue / $stock, 2)
-                    : 0.0;
-
-                $supplierNames = $product->suppliers
-                    ->pluck('name')
-                    ->filter()
-                    ->implode(', ');
-
-                return [
-                    'product_id' => $product->id,
-                    'name' => $product->name,
-                    'sku' => $product->sku,
-                    'barcode' => $product->barcode,
-                    'supplier' => $supplierNames,
-                    'unit' => $product->unit,
-                    'cost' => $cost,
-                    'selling_price' => (float) $product->selling_price,
-                    'stock' => $stock,
-                    'stock_value' => round($inventoryValue, 2),
-                    'minimum_stock' => $minimumStock,
-                    'is_low_stock' => $stock <= $minimumStock,
-                    'is_active' => (bool) $product->is_active,
-                ];
-            });
+        $data = $inventoryCalculationService
+            ->calculate($products);
 
         /*
         |--------------------------------------------------------------------------
@@ -323,10 +152,12 @@ class InventoryController extends Controller
 
             return match ($stockFilter) {
                 'in_stock' =>
-                $stock > 0 && !$product['is_low_stock'],
+                $stock > 0 &&
+                    !$product['is_low_stock'],
 
                 'low_stock' =>
-                $product['is_low_stock'] && $stock > 0,
+                $product['is_low_stock'] &&
+                    $stock > 0,
 
                 'out_of_stock' =>
                 $stock <= 0,
@@ -400,13 +231,14 @@ class InventoryController extends Controller
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Export Inventory
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| Export Inventory
+|--------------------------------------------------------------------------
+*/
 
     public function export(
-        Request $request
+        Request $request,
+        InventoryCalculationService $inventoryCalculationService
     ) {
         $validated = $request->validate([
             'search' => [
@@ -427,22 +259,28 @@ class InventoryController extends Controller
                 'integer',
                 'exists:suppliers,id',
             ],
+            'format' => [
+                'nullable',
+                'in:xlsx,csv',
+            ],
         ]);
 
         $search = trim($validated['search'] ?? '');
         $stockFilter = $validated['stock_filter'] ?? 'all';
         $productStatus = $validated['product_status'] ?? 'all';
         $supplierId = $validated['supplier_id'] ?? null;
+        $format = $validated['format'] ?? 'xlsx';
 
         /*
-        |--------------------------------------------------------------------------
-        | Get Products
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Product Query
+    |--------------------------------------------------------------------------
+    */
 
         $productQuery = Product::query()
             ->with('suppliers')
-            ->orderBy('name');
+            ->orderBy('name')
+            ->orderBy('id');
 
         if ($search !== '') {
             $productQuery->where(function ($query) use ($search) {
@@ -465,237 +303,280 @@ class InventoryController extends Controller
             });
         }
 
-        $products = $productQuery->get();
-
-        if ($products->isEmpty()) {
-            return Excel::download(
-                new InventoryExport(collect()),
-                'inventory-' . now()->format('Y-m-d') . '.xlsx'
-            );
-        }
-
-        $productIds = $products
-            ->pluck('id')
-            ->values();
-
         /*
-        |--------------------------------------------------------------------------
-        | Get Current Stock
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Supplier Label
+    |--------------------------------------------------------------------------
+    */
 
-        $stockByProduct = InventoryTransaction::query()
-            ->whereIn('product_id', $productIds)
-            ->select('product_id')
-            ->selectRaw("
-                COALESCE(SUM(
-                    CASE
-                        WHEN type IN ('purchase', 'refund') THEN quantity
-                        WHEN type IN ('sale', 'bad_order') THEN -quantity
-                        WHEN type = 'adjustment' THEN quantity
-                        ELSE 0
-                    END
-                ), 0) AS stock
-            ")
-            ->groupBy('product_id')
-            ->pluck('stock', 'product_id')
-            ->map(fn($stock) => (float) $stock);
+        $supplierLabel = 'All Suppliers';
 
-        /*
-        |--------------------------------------------------------------------------
-        | Get Purchase Transactions
-        |--------------------------------------------------------------------------
-        */
+        if ($supplierId !== null) {
+            $supplier = \App\Models\Supplier::find($supplierId);
 
-        $purchaseTransactions = InventoryTransaction::query()
-            ->whereIn('product_id', $productIds)
-            ->where('type', 'purchase')
-            ->orderBy('product_id')
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->get([
-                'id',
-                'product_id',
-                'quantity',
-                'unit_cost',
-                'created_at',
-            ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Get Sale Cost Allocations
-        |--------------------------------------------------------------------------
-        */
-
-        $allocatedByTransaction = collect();
-
-        if ($purchaseTransactions->isNotEmpty()) {
-            $allocatedByTransaction = SaleItemCost::query()
-                ->whereIn(
-                    'inventory_transaction_id',
-                    $purchaseTransactions->pluck('id')
-                )
-                ->select('inventory_transaction_id')
-                ->selectRaw("
-                    COALESCE(
-                        SUM(quantity - reversed_quantity),
-                        0
-                    ) AS allocated_quantity
-                ")
-                ->groupBy('inventory_transaction_id')
-                ->pluck(
-                    'allocated_quantity',
-                    'inventory_transaction_id'
-                )
-                ->map(fn($quantity) => (float) $quantity);
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Build FIFO Layers
-        |--------------------------------------------------------------------------
-        */
-
-        $layersByProduct = [];
-
-        foreach ($purchaseTransactions as $transaction) {
-            $purchasedQuantity = (float) $transaction->quantity;
-
-            $allocatedQuantity = $allocatedByTransaction->get(
-                $transaction->id,
-                0.0
-            );
-
-            $remainingQuantity = max(
-                0,
-                $purchasedQuantity - $allocatedQuantity
-            );
-
-            if ($remainingQuantity <= 0) {
-                continue;
+            if ($supplier) {
+                $supplierLabel = $supplier->name;
             }
-
-            $layersByProduct[$transaction->product_id][] = [
-                'quantity' => $remainingQuantity,
-                'unit_cost' => (float) $transaction->unit_cost,
-            ];
         }
 
         /*
-        |--------------------------------------------------------------------------
-        | Build Export Data
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | CSV Export
+    |--------------------------------------------------------------------------
+    |
+    | CSV is intentionally streamed so large exports do not require
+    | the complete dataset to remain in memory.
+    |
+    */
 
-        $data = $products
-            ->map(function (Product $product) use (
-                $stockByProduct,
-                $layersByProduct
-            ) {
-                $stock = $stockByProduct->get(
-                    $product->id,
-                    0.0
-                );
+        if ($format === 'csv') {
+            $fileName = 'inventory-' . now()->format('Y-m-d') . '.csv';
 
-                $minimumStock = (float) $product->minimum_stock;
+            return response()->streamDownload(
+                function () use (
+                    $productQuery,
+                    $stockFilter,
+                    $inventoryCalculationService
+                ) {
+                    $handle = fopen('php://output', 'w');
 
-                $remainingStock = max(0, $stock);
-                $inventoryValue = 0.0;
-
-                $layers = $layersByProduct[$product->id] ?? [];
-
-                foreach ($layers as $layer) {
-                    if ($remainingStock <= 0) {
-                        break;
+                    if ($handle === false) {
+                        return;
                     }
 
-                    $layerQuantity = min(
-                        $remainingStock,
-                        $layer['quantity']
-                    );
+                    /*
+                |--------------------------------------------------------------------------
+                | UTF-8 BOM
+                |--------------------------------------------------------------------------
+                |
+                | Helps Microsoft Excel correctly detect UTF-8 CSV files.
+                |
+                */
 
-                    $inventoryValue += round(
-                        $layerQuantity * $layer['unit_cost'],
-                        2
-                    );
+                    fwrite($handle, "\xEF\xBB\xBF");
 
-                    $remainingStock -= $layerQuantity;
-                }
+                    /*
+                |--------------------------------------------------------------------------
+                | CSV Headings
+                |--------------------------------------------------------------------------
+                */
 
-                $cost = $stock > 0
-                    ? round($inventoryValue / $stock, 2)
-                    : 0.0;
+                    fputcsv($handle, [
+                        'Product',
+                        'SKU',
+                        'Barcode',
+                        'Supplier',
+                        'Minimum Stock',
+                        'Stock',
+                        'Unit',
+                        'Stock Value',
+                        'Cost',
+                        'Selling Price',
+                        'Stock Status',
+                        'Product Status',
+                    ]);
 
-                $stockStatus = $stock <= 0
-                    ? 'Out of Stock'
-                    : (
-                        $stock <= $minimumStock
-                        ? 'Low Stock'
-                        : 'In Stock'
-                    );
+                    /*
+                |--------------------------------------------------------------------------
+                | Batch Processing
+                |--------------------------------------------------------------------------
+                */
 
-                $productStatus = $product->is_active
-                    ? 'Active'
-                    : 'Inactive';
+                    $batchSize = 500;
 
-                $supplierNames = $product->suppliers
-                    ->pluck('name')
-                    ->filter()
-                    ->implode(', ');
+                    $products = $productQuery
+                        ->clone()
+                        ->with('suppliers')
+                        ->lazy($batchSize);
 
-                return [
-                    'product_id' => $product->id,
-                    'name' => $product->name,
-                    'sku' => $product->sku,
-                    'barcode' => $product->barcode,
-                    'unit' => $product->unit,
-                    'supplier' => $supplierNames,
-                    'stock' => $stock,
-                    'minimum_stock' => $minimumStock,
-                    'cost' => $cost,
-                    'stock_value' => round($inventoryValue, 2),
-                    'selling_price' => (float) $product->selling_price,
-                    'stock_status' => $stockStatus,
-                    'product_status' => $productStatus,
-                ];
-            });
+                    $productBatch = collect();
+
+                    foreach ($products as $product) {
+                        $productBatch->push($product);
+
+                        if ($productBatch->count() < $batchSize) {
+                            continue;
+                        }
+
+                        $inventoryData = $inventoryCalculationService
+                            ->calculate($productBatch);
+
+                        foreach ($inventoryData as $inventory) {
+                            $stock = (float) $inventory['stock'];
+
+                            $isLowStock = (bool) $inventory['is_low_stock'];
+
+                            $stockStatus = $stock <= 0
+                                ? 'Out of Stock'
+                                : (
+                                    $isLowStock
+                                    ? 'Low Stock'
+                                    : 'In Stock'
+                                );
+
+                            $include = match ($stockFilter) {
+                                'in_stock' =>
+                                $stock > 0 &&
+                                    !$isLowStock,
+
+                                'low_stock' =>
+                                $isLowStock &&
+                                    $stock > 0,
+
+                                'out_of_stock' =>
+                                $stock <= 0,
+
+                                default =>
+                                true,
+                            };
+
+                            if (!$include) {
+                                continue;
+                            }
+
+                            fputcsv($handle, [
+                                $inventory['name'],
+                                $inventory['sku'],
+                                $inventory['barcode'],
+                                $inventory['supplier'],
+                                $inventory['minimum_stock'],
+                                $stock,
+                                $inventory['unit'],
+                                $inventory['stock_value'],
+                                $inventory['cost'],
+                                $inventory['selling_price'],
+                                $stockStatus,
+                                $inventory['is_active']
+                                    ? 'Active'
+                                    : 'Inactive',
+                            ]);
+                        }
+
+                        $productBatch = collect();
+
+                        unset($inventoryData);
+                        unset($product);
+                    }
+
+                    /*
+                |--------------------------------------------------------------------------
+                | Remaining Batch
+                |--------------------------------------------------------------------------
+                */
+
+                    if ($productBatch->isNotEmpty()) {
+                        $inventoryData = $inventoryCalculationService
+                            ->calculate($productBatch);
+
+                        foreach ($inventoryData as $inventory) {
+                            $stock = (float) $inventory['stock'];
+
+                            $isLowStock = (bool) $inventory['is_low_stock'];
+
+                            $stockStatus = $stock <= 0
+                                ? 'Out of Stock'
+                                : (
+                                    $isLowStock
+                                    ? 'Low Stock'
+                                    : 'In Stock'
+                                );
+
+                            $include = match ($stockFilter) {
+                                'in_stock' =>
+                                $stock > 0 &&
+                                    !$isLowStock,
+
+                                'low_stock' =>
+                                $isLowStock &&
+                                    $stock > 0,
+
+                                'out_of_stock' =>
+                                $stock <= 0,
+
+                                default =>
+                                true,
+                            };
+
+                            if (!$include) {
+                                continue;
+                            }
+
+                            fputcsv($handle, [
+                                $inventory['name'],
+                                $inventory['sku'],
+                                $inventory['barcode'],
+                                $inventory['supplier'],
+                                $inventory['minimum_stock'],
+                                $stock,
+                                $inventory['unit'],
+                                $inventory['stock_value'],
+                                $inventory['cost'],
+                                $inventory['selling_price'],
+                                $stockStatus,
+                                $inventory['is_active']
+                                    ? 'Active'
+                                    : 'Inactive',
+                            ]);
+                        }
+
+                        unset($inventoryData);
+                        $productBatch = collect();
+                    }
+
+                    fclose($handle);
+                },
+                $fileName,
+                [
+                    'Content-Type' => 'text/csv; charset=UTF-8',
+                    'Content-Disposition' =>
+                    'attachment; filename="' . $fileName . '"',
+                    'Cache-Control' => 'no-store, no-cache',
+                ]
+            );
+        }
 
         /*
-        |--------------------------------------------------------------------------
-        | Stock Filter
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | XLSX Export Preflight
+    |--------------------------------------------------------------------------
+    |
+    | Only the standard XLSX export is subject to the product threshold.
+    |
+    */
 
-        $data = $data->filter(function (array $product) use (
-            $stockFilter
-        ) {
-            $stock = (float) $product['stock'];
+        $exportProductCount = (clone $productQuery)->count();
 
-            return match ($stockFilter) {
-                'in_stock' =>
-                $stock > 0 &&
-                    $product['stock_status'] === 'In Stock',
+        $maxExportProducts = (int) config(
+            'ipos.inventory_export_max_products',
+            10000
+        );
 
-                'low_stock' =>
-                $product['stock_status'] === 'Low Stock' &&
-                    $stock > 0,
-
-                'out_of_stock' =>
-                $stock <= 0,
-
-                default =>
-                true,
-            };
-        })->values();
+        if ($exportProductCount > $maxExportProducts) {
+            return response()->json([
+                'message' =>
+                'The inventory export is too large for the standard XLSX export.',
+                'export_type' => 'inventory',
+                'product_count' => $exportProductCount,
+                'max_xlsx_products' => $maxExportProducts,
+                'csv_available' => true,
+            ], 422);
+        }
 
         /*
-        |--------------------------------------------------------------------------
-        | Download Excel File
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | XLSX Export
+    |--------------------------------------------------------------------------
+    |
+    | Existing XLSX export behavior remains unchanged.
+    |
+    */
 
         return Excel::download(
-            new InventoryExport($data),
+            new InventoryExport(
+                $productQuery,
+                $stockFilter,
+                $supplierLabel
+            ),
             'inventory-' . now()->format('Y-m-d') . '.xlsx'
         );
     }

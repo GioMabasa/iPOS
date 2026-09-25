@@ -19,6 +19,9 @@ import { getSuppliers } from "../services/supplierService";
 
 import type { Supplier } from "../types/supplier";
 
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
+
 export default function Inventory() {
   const [inventory, setInventory] = useState<InventoryProduct[]>([]);
 
@@ -207,7 +210,7 @@ export default function Inventory() {
       setExportLoading(true);
       setError("");
 
-      const blob = await exportInventory({
+      const exportParams = {
         search,
         stock_filter: stockFilter,
         product_status: productStatusFilter,
@@ -216,21 +219,120 @@ export default function Inventory() {
               supplier_id: Number(supplierFilter),
             }
           : {}),
-      } as Parameters<typeof exportInventory>[0]);
+      } as Parameters<typeof exportInventory>[0];
 
-      const url = window.URL.createObjectURL(blob);
+      let blob: Blob;
+      let fileExtension: "xlsx" | "csv" = "xlsx";
 
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `inventory-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      try {
+        /*
+      |--------------------------------------------------------------------------
+      | Standard XLSX Export
+      |--------------------------------------------------------------------------
+      */
 
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+        blob = await exportInventory(exportParams);
+      } catch (err) {
+        /*
+      |--------------------------------------------------------------------------
+      | Large Export Detection
+      |--------------------------------------------------------------------------
+      |
+      | Axios receives error responses as Blob because the original request
+      | uses responseType: "blob".
+      |
+      | Therefore we need to inspect the blob contents to determine whether
+      | the backend returned the expected 422 preflight response.
+      |
+      */
 
-      window.URL.revokeObjectURL(url);
+        if (err && typeof err === "object" && "response" in err) {
+          const response = (
+            err as {
+              response?: {
+                status?: number;
+                data?: unknown;
+              };
+            }
+          ).response;
+
+          if (response?.status === 422) {
+            let isLargeInventoryExport = false;
+
+            try {
+              if (response.data instanceof Blob) {
+                const errorText = await response.data.text();
+
+                const errorData = JSON.parse(errorText);
+
+                isLargeInventoryExport = errorData?.csv_available === true;
+              }
+            } catch {
+              isLargeInventoryExport = false;
+            }
+
+            if (isLargeInventoryExport) {
+              /*
+            |--------------------------------------------------------------------------
+            | CSV Fallback
+            |--------------------------------------------------------------------------
+            */
+
+              blob = await exportInventory({
+                ...exportParams,
+                format: "csv",
+              });
+
+              fileExtension = "csv";
+            } else {
+              throw err;
+            }
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      /*
+    |--------------------------------------------------------------------------
+    | Save File
+    |--------------------------------------------------------------------------
+    */
+
+      const defaultFileName = `inventory-${new Date()
+        .toISOString()
+        .slice(0, 10)}.${fileExtension}`;
+
+      const filePath = await save({
+        title: "Save Inventory Report",
+        defaultPath: defaultFileName,
+        filters: [
+          {
+            name:
+              fileExtension === "csv" ? "CSV Spreadsheet" : "Excel Spreadsheet",
+            extensions: [fileExtension],
+          },
+        ],
+      });
+
+      if (!filePath) {
+        return;
+      }
+
+      const arrayBuffer = await blob.arrayBuffer();
+
+      await writeFile(filePath, new Uint8Array(arrayBuffer));
     } catch (err) {
-      console.error(err);
+      console.error("INVENTORY EXPORT ERROR:", err);
+
+      if (err instanceof Error) {
+        console.error("MESSAGE:", err.message);
+
+        console.error("STACK:", err.stack);
+      }
+
       setError("Unable to export inventory.");
     } finally {
       setExportLoading(false);

@@ -185,21 +185,24 @@ export async function adjustInventory(data: {
 |--------------------------------------------------------------------------
 */
 
+export interface ExportInventoryParams extends GetInventoryParams {
+  format?: "xlsx" | "csv";
+}
+
 export async function exportInventory(
-  params: GetInventoryParams = {},
+  params: ExportInventoryParams = {},
 ): Promise<Blob> {
   const token = localStorage.getItem("ipos_token");
 
-  console.log("EXPORT TOKEN EXISTS:", !!token);
-  console.log("EXPORT TOKEN LENGTH:", token?.length);
-
-  const response = await api.get(
+  const response = await api.get<Blob>(
     "/inventory/export",
     {
       params,
       responseType: "blob",
       headers: {
-        Authorization: token ? `Bearer ${token}` : "",
+        Authorization: token
+          ? `Bearer ${token}`
+          : "",
       },
     },
   );
