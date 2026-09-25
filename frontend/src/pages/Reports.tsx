@@ -5,6 +5,7 @@ import type { Sale } from "../types/sale";
 import {
   getSalesReport,
   getSalesSummary,
+  exportSalesReport,
   type SalesReportParams,
 } from "../services/reportService";
 
@@ -31,6 +32,7 @@ export default function Reports() {
   const [productSearchLoading, setProductSearchLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [error, setError] = useState("");
 
   /*
@@ -368,6 +370,53 @@ export default function Reports() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      setExportLoading(true);
+      setError("");
+
+      const params: SalesReportParams = {
+        period,
+        user_id: userId === "" ? undefined : Number(userId),
+        product_id: productId === "" ? undefined : Number(productId),
+        status: status || undefined,
+        sale_number: saleNumber.trim() || undefined,
+        invoice_number: invoiceNumber.trim() || undefined,
+      };
+
+      if (period === "custom") {
+        params.from = dateFrom || undefined;
+        params.to = dateTo || undefined;
+      }
+
+      const blob = await exportSalesReport(params);
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = url;
+
+      link.download = `reports-sales-${new Date()
+        .toISOString()
+        .slice(0, 10)}.xlsx`;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+
+      setError("Unable to export sales report.");
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   /*
   |--------------------------------------------------------------------------
   | Render
@@ -377,36 +426,74 @@ export default function Reports() {
   return (
     <div className="min-h-full bg-slate-50 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className="h-5 w-5"
-              aria-hidden="true"
-            >
-              <path d="M4 19V5" />
-              <path d="M4 19h17" />
-              <path d="M8 16v-5" />
-              <path d="M12 16V8" />
-              <path d="M16 16V5" />
-              <path d="M20 16V10" />
-            </svg>
-          </div>
-
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Reports
-            </h1>
-
-            <p className="mt-1 text-sm text-slate-500">
-              View and analyze sales reports.
-            </p>
-          </div>
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Review sales performance, transactions, and profitability.
+          </p>
         </div>
+
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={exportLoading}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 border border-emerald-200"
+        >
+          {exportLoading ? (
+            <>
+              <svg
+                className="h-4 w-4 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4Z"
+                />
+              </svg>
+              Exporting...
+            </>
+          ) : (
+            <>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-4 w-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 3v12"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m8 11 4 4 4-4"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 21h14"
+                />
+              </svg>
+              Export Report to Spreadsheet
+            </>
+          )}
+        </button>
       </div>
 
       {/* Filters */}
@@ -852,7 +939,6 @@ export default function Reports() {
       </section>
 
       {/* Summary */}
-
       <section className="mb-6 overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-white to-indigo-50/40 p-4 shadow-sm sm:p-5">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm shadow-indigo-200">

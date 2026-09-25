@@ -981,12 +981,12 @@ export default function POS() {
           </div>
         </div>
 
-        <div className="hidden items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm sm:flex">
-          <kbd className="rounded-md bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
+        <div className="hidden items-center gap-2 rounded-xl p-3 bg-indigo-500 text-white shadow-sm border  px-3 py-2 shadow-sm sm:flex">
+          <kbd className="rounded-md bg-indigo-700 px-2 py-1 text-xs  font-bold text-white">
             F4
           </kbd>
 
-          <span className="text-xs text-gray-500">Payment</span>
+          <span className="text-xs text-white">Payment</span>
         </div>
       </div>
 
@@ -2103,34 +2103,14 @@ export default function POS() {
 
                   {/* CHANGE */}
 
-                  {paymentMethod === "cash" && (
-                    <div
-                      className={`mt-4 flex items-center justify-between rounded-xl p-4 ${
-                        insufficientPayment
-                          ? "border border-red-100 bg-red-50"
-                          : "border border-green-100 bg-green-50"
-                      }`}
-                    >
-                      <span
-                        className={`text-sm font-semibold ${
-                          insufficientPayment
-                            ? "text-red-600"
-                            : "text-green-600"
-                        }`}
-                      >
-                        {insufficientPayment ? "Amount Due" : "Change"}
+                  {paymentMethod === "cash" && numericAmountPaid > total && (
+                    <div className="mt-4 flex items-center justify-between rounded-xl border border-green-100 bg-green-50 p-4">
+                      <span className="text-sm font-semibold text-green-600">
+                        Change
                       </span>
 
-                      <span
-                        className={`text-lg font-bold ${
-                          insufficientPayment
-                            ? "text-red-700"
-                            : "text-green-700"
-                        }`}
-                      >
-                        {insufficientPayment
-                          ? formatCurrency(total - numericAmountPaid)
-                          : formatCurrency(changeAmount)}
+                      <span className="text-lg font-bold text-green-700">
+                        {formatCurrency(changeAmount)}
                       </span>
                     </div>
                   )}
@@ -2327,28 +2307,16 @@ export default function POS() {
                         </span>
                       </div>
 
-                      <div className="flex items-end justify-between border-t border-gray-200 pt-4">
-                        <span className="font-semibold text-gray-600">
+                      <div className="mt-4 flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                        <span className="text-sm font-semibold text-indigo-600">
                           Total
                         </span>
 
-                        <span className="text-2xl font-bold tracking-tight text-gray-900">
+                        <span className="text-3xl font-bold text-indigo-900">
                           {formatCurrency(total)}
                         </span>
                       </div>
                     </div>
-                  </div>
-
-                  {/* QUICK TOTAL */}
-
-                  <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">
-                      Amount to Collect
-                    </p>
-
-                    <p className="mt-1 text-3xl font-bold tracking-tight text-blue-900">
-                      {formatCurrency(total)}
-                    </p>
                   </div>
                 </div>
               </div>

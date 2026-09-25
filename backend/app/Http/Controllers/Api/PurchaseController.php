@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Services\InventoryService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Exports\PurchasesExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PurchaseController extends Controller
 {
@@ -23,8 +26,158 @@ class PurchaseController extends Controller
             100
         );
 
-        $purchases = Purchase::query()
-            ->with('supplier')
+        $validated = $request->validate([
+            'search' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
+
+            'supplier_id' => [
+                'nullable',
+                'integer',
+                'exists:suppliers,id',
+            ],
+
+            'period' => [
+                'nullable',
+                'in:all,today,yesterday,this_week,this_month,this_year,custom',
+            ],
+
+            'start_date' => [
+                'nullable',
+                'date',
+            ],
+
+            'end_date' => [
+                'nullable',
+                'date',
+                'after_or_equal:start_date',
+            ],
+        ]);
+
+        $query = Purchase::query()
+            ->with('supplier');
+
+        /*
+         * Search
+         */
+        if (!empty($validated['search'])) {
+            $search = trim($validated['search']);
+
+            $query->where(function ($q) use ($search) {
+                $q->where('purchase_number', 'like', "%{$search}%")
+                    ->orWhere('reference_number', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                        $supplierQuery->where(
+                            'name',
+                            'like',
+                            "%{$search}%"
+                        );
+                    });
+            });
+        }
+
+        /*
+         * Supplier filter
+         */
+        if (!empty($validated['supplier_id'])) {
+            $query->where(
+                'supplier_id',
+                $validated['supplier_id']
+            );
+        }
+
+        /*
+         * Period filter
+         *
+         * All date calculations use Asia/Manila.
+         */
+        $period = $validated['period'] ?? 'all';
+
+        if ($period !== 'all') {
+            $timezone = 'Asia/Manila';
+            $now = Carbon::now($timezone);
+
+            switch ($period) {
+                case 'today':
+                    $query->whereDate(
+                        'purchase_date',
+                        $now->toDateString()
+                    );
+                    break;
+
+                case 'yesterday':
+                    $yesterday = $now->copy()->subDay();
+
+                    $query->whereDate(
+                        'purchase_date',
+                        $yesterday->toDateString()
+                    );
+                    break;
+
+                case 'this_week':
+                    $startOfWeek = $now
+                        ->copy()
+                        ->startOfWeek();
+
+                    $endOfWeek = $now
+                        ->copy()
+                        ->endOfWeek();
+
+                    $query->whereBetween('purchase_date', [
+                        $startOfWeek->toDateString(),
+                        $endOfWeek->toDateString(),
+                    ]);
+                    break;
+
+                case 'this_month':
+                    $startOfMonth = $now
+                        ->copy()
+                        ->startOfMonth();
+
+                    $endOfMonth = $now
+                        ->copy()
+                        ->endOfMonth();
+
+                    $query->whereBetween('purchase_date', [
+                        $startOfMonth->toDateString(),
+                        $endOfMonth->toDateString(),
+                    ]);
+                    break;
+
+                case 'this_year':
+                    $startOfYear = $now
+                        ->copy()
+                        ->startOfYear();
+
+                    $endOfYear = $now
+                        ->copy()
+                        ->endOfYear();
+
+                    $query->whereBetween('purchase_date', [
+                        $startOfYear->toDateString(),
+                        $endOfYear->toDateString(),
+                    ]);
+                    break;
+
+                case 'custom':
+                    if (
+                        !empty($validated['start_date']) &&
+                        !empty($validated['end_date'])
+                    ) {
+                        $query->whereBetween('purchase_date', [
+                            $validated['start_date'],
+                            $validated['end_date'],
+                        ]);
+                    }
+
+                    break;
+            }
+        }
+
+        $purchases = $query
             ->latest()
             ->paginate($perPage);
 
@@ -200,6 +353,253 @@ class PurchaseController extends Controller
                 'items.product',
             ]),
         ], 201);
+    }
+
+    /**
+     * Export purchases to spreadsheet.
+     */
+    public function export(Request $request)
+    {
+        $validated = $request->validate([
+            'search' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
+
+            'supplier_id' => [
+                'nullable',
+                'integer',
+                'exists:suppliers,id',
+            ],
+
+            'period' => [
+                'nullable',
+                'in:all,today,yesterday,this_week,this_month,this_year,custom',
+            ],
+
+            'start_date' => [
+                'nullable',
+                'date',
+            ],
+
+            'end_date' => [
+                'nullable',
+                'date',
+                'after_or_equal:start_date',
+            ],
+        ]);
+
+        $query = Purchase::query()
+            ->with([
+                'supplier',
+                'items.product',
+            ]);
+
+        /*
+    |--------------------------------------------------------------------------
+    | Search filter
+    |--------------------------------------------------------------------------
+    */
+
+        if (!empty($validated['search'])) {
+            $search = trim($validated['search']);
+
+            $query->where(function ($q) use ($search) {
+                $q->where(
+                    'purchase_number',
+                    'like',
+                    "%{$search}%"
+                )
+                    ->orWhere(
+                        'reference_number',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhere(
+                        'status',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                        $supplierQuery->where(
+                            'name',
+                            'like',
+                            "%{$search}%"
+                        );
+                    });
+            });
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Supplier filter
+    |--------------------------------------------------------------------------
+    */
+
+        if (!empty($validated['supplier_id'])) {
+            $query->where(
+                'supplier_id',
+                $validated['supplier_id']
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Period filter
+    |--------------------------------------------------------------------------
+    |
+    | All date calculations use Asia/Manila.
+    |
+    */
+
+        $period = $validated['period'] ?? 'all';
+
+        $dateFrom = null;
+        $dateTo = null;
+
+        if ($period !== 'all') {
+            $timezone = 'Asia/Manila';
+            $now = Carbon::now($timezone);
+
+            switch ($period) {
+                case 'today':
+                    $dateFrom = $now->toDateString();
+                    $dateTo = $now->toDateString();
+
+                    $query->whereDate(
+                        'purchase_date',
+                        $dateFrom
+                    );
+
+                    break;
+
+                case 'yesterday':
+                    $yesterday = $now->copy()->subDay();
+
+                    $dateFrom = $yesterday->toDateString();
+                    $dateTo = $yesterday->toDateString();
+
+                    $query->whereDate(
+                        'purchase_date',
+                        $dateFrom
+                    );
+
+                    break;
+
+                case 'this_week':
+                    $startOfWeek = $now
+                        ->copy()
+                        ->startOfWeek();
+
+                    $endOfWeek = $now
+                        ->copy()
+                        ->endOfWeek();
+
+                    $dateFrom = $startOfWeek->toDateString();
+                    $dateTo = $endOfWeek->toDateString();
+
+                    $query->whereBetween('purchase_date', [
+                        $dateFrom,
+                        $dateTo,
+                    ]);
+
+                    break;
+
+                case 'this_month':
+                    $startOfMonth = $now
+                        ->copy()
+                        ->startOfMonth();
+
+                    $endOfMonth = $now
+                        ->copy()
+                        ->endOfMonth();
+
+                    $dateFrom = $startOfMonth->toDateString();
+                    $dateTo = $endOfMonth->toDateString();
+
+                    $query->whereBetween('purchase_date', [
+                        $dateFrom,
+                        $dateTo,
+                    ]);
+
+                    break;
+
+                case 'this_year':
+                    $startOfYear = $now
+                        ->copy()
+                        ->startOfYear();
+
+                    $endOfYear = $now
+                        ->copy()
+                        ->endOfYear();
+
+                    $dateFrom = $startOfYear->toDateString();
+                    $dateTo = $endOfYear->toDateString();
+
+                    $query->whereBetween('purchase_date', [
+                        $dateFrom,
+                        $dateTo,
+                    ]);
+
+                    break;
+
+                case 'custom':
+                    $dateFrom = $validated['start_date'] ?? null;
+                    $dateTo = $validated['end_date'] ?? null;
+
+                    if ($dateFrom && $dateTo) {
+                        $query->whereBetween('purchase_date', [
+                            $dateFrom,
+                            $dateTo,
+                        ]);
+                    }
+
+                    break;
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Get purchases
+    |--------------------------------------------------------------------------
+    */
+
+        $purchases = $query
+            ->latest()
+            ->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Supplier name
+    |--------------------------------------------------------------------------
+    */
+
+        $supplier = null;
+
+        if (!empty($validated['supplier_id'])) {
+            $supplier = \App\Models\Supplier::find(
+                $validated['supplier_id']
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Export
+    |--------------------------------------------------------------------------
+    */
+
+        return Excel::download(
+            new PurchasesExport(
+                data: $purchases,
+                period: $period,
+                dateFrom: $dateFrom,
+                dateTo: $dateTo,
+                search: $validated['search'] ?? null,
+                supplier: $supplier?->name,
+            ),
+            'purchases.xlsx'
+        );
     }
 
     /**

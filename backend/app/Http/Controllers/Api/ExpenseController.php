@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use App\Exports\ExpensesExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ExpenseController extends Controller
 {
@@ -141,6 +143,33 @@ class ExpenseController extends Controller
     public function summary(Request $request): JsonResponse
     {
         $query = Expense::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                    ->orWhere('reference_no', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('expense_category_id')) {
+            $query->where(
+                'expense_category_id',
+                $request->expense_category_id
+            );
+        }
+
+        if ($request->filled('payment_method')) {
+            $query->where(
+                'payment_method',
+                $request->payment_method
+            );
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
 
         if ($request->filled('date_from')) {
             $query->whereDate(
@@ -276,5 +305,95 @@ class ExpenseController extends Controller
             'message' => 'Expense voided successfully.',
             'expense' => $expense,
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $query = Expense::with([
+            'category:id,name',
+            'creator:id,name',
+        ]);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                    ->orWhere('reference_no', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('expense_category_id')) {
+            $query->where(
+                'expense_category_id',
+                $request->expense_category_id
+            );
+        }
+
+        if ($request->filled('payment_method')) {
+            $query->where(
+                'payment_method',
+                $request->payment_method
+            );
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate(
+                'expense_date',
+                '>=',
+                $request->date_from
+            );
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate(
+                'expense_date',
+                '<=',
+                $request->date_to
+            );
+        }
+
+        $expenses = $query
+            ->orderByDesc('expense_date')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function ($expense) {
+                return [
+                    'expense_date' => $expense->expense_date,
+                    'category' => $expense->category?->name ?? '—',
+                    'description' => $expense->description,
+                    'payment_method' => $expense->payment_method,
+                    'reference_no' => $expense->reference_no ?? '—',
+                    'amount' => (float) $expense->amount,
+                    'status' => $expense->status,
+                    'notes' => $expense->notes ?? '—',
+                ];
+            });
+
+        $category = null;
+
+        if ($request->filled('expense_category_id')) {
+            $category = \App\Models\ExpenseCategory::find(
+                $request->expense_category_id
+            );
+        }
+
+        return Excel::download(
+            new ExpensesExport(
+                data: $expenses,
+                period: $request->input('period'),
+                dateFrom: $request->input('date_from'),
+                dateTo: $request->input('date_to'),
+                search: $request->input('search'),
+                category: $category?->name,
+                paymentMethod: $request->input('payment_method'),
+                status: $request->input('status')
+            ),
+            'expenses.xlsx'
+        );
     }
 }

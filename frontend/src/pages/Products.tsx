@@ -76,6 +76,8 @@ export default function Products() {
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
+  const [exporting, setExporting] = useState(false);
+
   /*
   |--------------------------------------------------------------------------
   | Load Products
@@ -174,6 +176,8 @@ export default function Products() {
 
   async function handleExportProducts() {
     try {
+      setExporting(true);
+
       const blob = await exportProducts({
         search,
         category_id: categoryFilter,
@@ -362,7 +366,8 @@ export default function Products() {
           <button
             type="button"
             onClick={handleExportProducts}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={exporting}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 border border-emerald-200"
           >
             <svg
               className="h-4 w-4"
@@ -374,10 +379,11 @@ export default function Products() {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14a2 2 0 0 0 2-2v-5M3 14v5a2 2 0 0 0 2 2"
+                d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
               />
             </svg>
-            Export
+
+            {exporting ? "Exporting..." : "Export Expenses to Spreadsheet"}
           </button>
 
           <button

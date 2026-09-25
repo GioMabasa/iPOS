@@ -798,21 +798,19 @@ export default function Categories() {
                           <button
                             type="button"
                             onClick={() => openEditModal(category)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                            aria-label={`Edit ${category.name}`}
-                            title="Edit Category"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                           >
                             <EditIcon className="h-4 w-4" />
+                            Edit
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(category)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                            aria-label={`Delete ${category.name}`}
-                            title="Delete Category"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-red-100 bg-white px-3 text-xs font-semibold text-red-600 shadow-sm transition hover:bg-red-50"
                           >
                             <TrashIcon className="h-4 w-4" />
+                            Delete
                           </button>
                         </div>
                       </td>

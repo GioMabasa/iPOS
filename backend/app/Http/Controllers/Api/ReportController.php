@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 use App\Services\InventoryReportService;
 use App\Services\DashboardReportService;
 use Carbon\Carbon;
+use App\Exports\ReportsExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
@@ -337,6 +339,145 @@ class ReportController extends Controller
                 $request->input('per_page', 20)
             ),
         ]);
+    }
+
+    /*
+|--------------------------------------------------------------------------
+| Export Sales Report
+|--------------------------------------------------------------------------
+*/
+
+    public function export(
+        Request $request,
+        SalesReportService $salesReportService
+    ) {
+        $range = $this->resolveDateRange(
+            $request
+        );
+
+        $filters = $this->validateSalesFilters(
+            $request
+        );
+
+        $sales = $salesReportService->sales(
+            $range['from'],
+            $range['to'],
+            $filters
+        );
+
+        $data = $sales->map(function ($sale) {
+            $totalItems = $sale->items->sum(
+                fn($item) => (float) $item->quantity
+            );
+
+            $cogs = $sale->items->sum(function ($item) {
+                return $item->costs->sum(function ($cost) {
+                    $quantity = (float) $cost->quantity;
+                    $reversedQuantity =
+                        (float) $cost->reversed_quantity;
+
+                    $remainingQuantity = max(
+                        0,
+                        $quantity - $reversedQuantity
+                    );
+
+                    return $remainingQuantity *
+                        (float) $cost->unit_cost;
+                });
+            });
+
+            $total = (float) $sale->total;
+
+            $grossProfit = $total - $cogs;
+
+            $grossMargin = $total > 0
+                ? ($grossProfit / $total) * 100
+                : 0;
+
+            $status = match ($sale->status) {
+                'completed' => 'Completed',
+                'refunded' => 'Refunded',
+                'voided' => 'Voided',
+                default => $sale->status,
+            };
+
+            return [
+                'sale_number' =>
+                $sale->sale_number,
+
+                'invoice_number' =>
+                $sale->invoice_number,
+
+                'sale_date' =>
+                $sale->sale_date,
+
+                'customer' =>
+                $sale->customer?->name
+                    ?? 'Walk-in Customer',
+
+                'cashier' =>
+                $sale->user?->name
+                    ?? '—',
+
+                'total_items' =>
+                $totalItems,
+
+                'subtotal' =>
+                (float) $sale->subtotal,
+
+                'discount' =>
+                (float) $sale->discount,
+
+                'tax' =>
+                (float) $sale->tax,
+
+                'total' =>
+                $total,
+
+                'cogs' =>
+                round($cogs, 2),
+
+                'gross_profit' =>
+                round($grossProfit, 2),
+
+                'gross_margin' =>
+                round($grossMargin, 2),
+
+                'payment_method' =>
+                ucfirst(
+                    (string) (
+                        $sale->payment_method
+                        ?? 'cash'
+                    )
+                ),
+
+                'term_months' =>
+                $sale->term_months ?? 0,
+
+                'due_date' =>
+                $sale->due_date ?? '',
+
+                'amount_paid' =>
+                (float) (
+                    $sale->amount_paid ?? 0
+                ),
+
+                'status' =>
+                $status,
+            ];
+        });
+
+        return Excel::download(
+            new ReportsExport(
+                $data,
+                $range['from'],
+                $range['to'],
+                $filters['status'] ?? 'completed'
+            ),
+            'reports-sales-' .
+                now()->format('Y-m-d') .
+                '.xlsx'
+        );
     }
 
 

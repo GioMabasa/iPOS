@@ -735,21 +735,487 @@ export default function Sales() {
                 </svg>
               </div>
 
-              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
-                Transactions
-              </span>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  Sales
+                </h1>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  View completed, refunded, and voided sales transactions.
+                </p>
+              </div>
             </div>
-
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Sales
-            </h1>
-
-            <p className="mt-1 text-sm text-slate-500">
-              View completed, refunded, and voided sales transactions.
-            </p>
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={exportLoading}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 border border-emerald-200"
+            >
+              {exportLoading ? (
+                <>
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4Z"
+                    />
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-4 w-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 3v12"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m8 11 4 4 4-4"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 21h14"
+                    />
+                  </svg>
+                  Export Sales to Spreadsheet
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Filters */}
+      <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 6h16M7 12h10M10 18h4"
+                />
+              </svg>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-slate-800">
+                Sales Filters
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                Search and filter transaction records.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+            {/* Search */}
+            <div className="relative lg:col-span-4">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-4.5 w-4.5"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m20 20-4-4"
+                  />
+                </svg>
+              </div>
+
+              <input
+                type="text"
+                value={search}
+                onFocus={selectAllOnFocus}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search sale, invoice, customer, cashier..."
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+
+            {/* Status */}
+            <select
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setPage(1);
+              }}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
+            >
+              <option value="">All Types</option>
+              <option value="completed">Completed</option>
+              <option value="refunded">Refunded</option>
+              <option value="voided">Voided</option>
+            </select>
+
+            {/* Payment Method */}
+            <select
+              value={paymentMethod}
+              onChange={(e) => {
+                setPaymentMethod(e.target.value);
+                setPage(1);
+              }}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
+            >
+              <option value="">All Payment Methods</option>
+              <option value="cash">Cash</option>
+              <option value="charge">Charge</option>
+            </select>
+
+            {/* User */}
+            {(user?.role === "admin" || user?.role === "manager") && (
+              <select
+                value={selectedUserId}
+                onChange={(e) => {
+                  setSelectedUserId(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  );
+                  setPage(1);
+                }}
+                className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
+              >
+                <option value="">All Users</option>
+
+                {users.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Date Preset */}
+            <select
+              value={datePreset}
+              onChange={(e) => handleDatePresetChange(e.target.value)}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
+            >
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="this_week">This Week</option>
+              <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          {datePreset === "custom" && (
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                  From
+                </label>
+
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    setPage(1);
+                  }}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                  To
+                </label>
+
+                <input
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={(e) => {
+                    setDateTo(e.target.value);
+                    setPage(1);
+                  }}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-4 w-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 6h18M9 6V4h6v2M8 10v7M12 10v7M16 10v7M5 6l1 15h12l1-15"
+                />
+              </svg>
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* My Requests - Cashier Only */}
+      {user?.role === "cashier" && myActionRequests.length > 0 && (
+        <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8 7h8M8 11h5"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                  />
+                </svg>
+              </div>
+
+              <div>
+                <h2 className="text-sm font-semibold text-slate-800">
+                  My Requests
+                </h2>
+
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Track your Void and Refund approval requests.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={loadMyActionRequests}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-4 w-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M20 11a8 8 0 0 0-14.9-4M4 5v4h4"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 13a8 8 0 0 0 14.9 4M20 19v-4h-4"
+                />
+              </svg>
+              Refresh
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50/70">
+                <tr className="border-b border-slate-100">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Sale #
+                  </th>
+
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Invoice #
+                  </th>
+
+                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Type
+                  </th>
+
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Amount
+                  </th>
+
+                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Status
+                  </th>
+
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Requested
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {myActionRequests.map((request) => (
+                  <tr
+                    key={request.id}
+                    className="border-b border-slate-100 last:border-b-0 transition hover:bg-slate-50/70"
+                  >
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-slate-800">
+                      {request.sale?.sale_number ?? "—"}
+                    </td>
+
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-500">
+                      {request.sale?.invoice_number ?? "—"}
+                    </td>
+
+                    <td className="px-5 py-4 text-center">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRequestActionClass(
+                          request.action_type,
+                        )}`}
+                      >
+                        {getRequestActionLabel(request.action_type)}
+                      </span>
+                    </td>
+
+                    <td className="whitespace-nowrap px-5 py-4 text-right font-semibold text-slate-800">
+                      {formatCurrency(request.sale?.total ?? 0)}
+                    </td>
+
+                    <td className="px-5 py-4 text-center">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRequestStatusClass(
+                          request.status,
+                        )}`}
+                      >
+                        {getRequestStatusLabel(request.status)}
+                      </span>
+                    </td>
+
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-500">
+                      {formatDate(request.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+            {myActionRequests.some(
+              (request) => request.status === "pending",
+            ) && (
+              <div className="flex items-start gap-3 text-sm text-amber-700">
+                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 8v4"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 16h.01"
+                    />
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                </div>
+
+                <p>
+                  You have a pending request waiting for Manager/Admin approval.
+                </p>
+              </div>
+            )}
+
+            {myActionRequests.some(
+              (request) => request.status === "rejected",
+            ) && (
+              <div className="mt-2 flex items-start gap-3 text-sm text-red-600">
+                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m9 9 6 6M15 9l-6 6"
+                    />
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                </div>
+
+                <p>
+                  Some of your requests were rejected. Check the request details
+                  in the table above.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -1159,473 +1625,6 @@ export default function Sales() {
           </div>
         </div>
       </div>
-
-      {/* Filters */}
-      <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-5 w-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 6h16M7 12h10M10 18h4"
-                />
-              </svg>
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-slate-800">
-                Sales Filters
-              </p>
-              <p className="mt-0.5 text-xs text-slate-400">
-                Search and filter transaction records.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-            {/* Search */}
-            <div className="relative lg:col-span-4">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="h-4.5 w-4.5"
-                >
-                  <circle cx="11" cy="11" r="7" />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m20 20-4-4"
-                  />
-                </svg>
-              </div>
-
-              <input
-                type="text"
-                value={search}
-                onFocus={selectAllOnFocus}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search sale, invoice, customer, cashier..."
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              />
-            </div>
-
-            {/* Status */}
-            <select
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value);
-                setPage(1);
-              }}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
-            >
-              <option value="">All Types</option>
-              <option value="completed">Completed</option>
-              <option value="refunded">Refunded</option>
-              <option value="voided">Voided</option>
-            </select>
-
-            {/* Payment Method */}
-            <select
-              value={paymentMethod}
-              onChange={(e) => {
-                setPaymentMethod(e.target.value);
-                setPage(1);
-              }}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
-            >
-              <option value="">All Payment Methods</option>
-              <option value="cash">Cash</option>
-              <option value="charge">Charge</option>
-            </select>
-
-            {/* User */}
-            {(user?.role === "admin" || user?.role === "manager") && (
-              <select
-                value={selectedUserId}
-                onChange={(e) => {
-                  setSelectedUserId(
-                    e.target.value === "" ? "" : Number(e.target.value),
-                  );
-                  setPage(1);
-                }}
-                className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
-              >
-                <option value="">All Users</option>
-
-                {users.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {/* Date Preset */}
-            <select
-              value={datePreset}
-              onChange={(e) => handleDatePresetChange(e.target.value)}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 lg:col-span-2"
-            >
-              <option value="all">All Dates</option>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="this_week">This Week</option>
-              <option value="this_month">This Month</option>
-              <option value="last_month">Last Month</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
-
-          {datePreset === "custom" && (
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-500">
-                  From
-                </label>
-
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => {
-                    setDateFrom(e.target.value);
-                    setPage(1);
-                  }}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-500">
-                  To
-                </label>
-
-                <input
-                  type="date"
-                  value={dateTo}
-                  min={dateFrom || undefined}
-                  onChange={(e) => {
-                    setDateTo(e.target.value);
-                    setPage(1);
-                  }}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-4 w-4"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 6h18M9 6V4h6v2M8 10v7M12 10v7M16 10v7M5 6l1 15h12l1-15"
-                />
-              </svg>
-              Clear Filters
-            </button>
-
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={exportLoading}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {exportLoading ? (
-                <>
-                  <svg
-                    className="h-4 w-4 animate-spin"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4Z"
-                    />
-                  </svg>
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="h-4 w-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 3v12"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="m8 11 4 4 4-4"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 21h14"
-                    />
-                  </svg>
-                  Export Sales to Spreadsheet
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* My Requests - Cashier Only */}
-      {user?.role === "cashier" && myActionRequests.length > 0 && (
-        <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="h-5 w-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M8 7h8M8 11h5"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
-                  />
-                </svg>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-semibold text-slate-800">
-                  My Requests
-                </h2>
-
-                <p className="mt-0.5 text-xs text-slate-400">
-                  Track your Void and Refund approval requests.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={loadMyActionRequests}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-4 w-4"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M20 11a8 8 0 0 0-14.9-4M4 5v4h4"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 13a8 8 0 0 0 14.9 4M20 19v-4h-4"
-                />
-              </svg>
-              Refresh
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50/70">
-                <tr className="border-b border-slate-100">
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Sale #
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Invoice #
-                  </th>
-
-                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Type
-                  </th>
-
-                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Amount
-                  </th>
-
-                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Status
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Requested
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {myActionRequests.map((request) => (
-                  <tr
-                    key={request.id}
-                    className="border-b border-slate-100 last:border-b-0 transition hover:bg-slate-50/70"
-                  >
-                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-slate-800">
-                      {request.sale?.sale_number ?? "—"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-5 py-4 text-slate-500">
-                      {request.sale?.invoice_number ?? "—"}
-                    </td>
-
-                    <td className="px-5 py-4 text-center">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRequestActionClass(
-                          request.action_type,
-                        )}`}
-                      >
-                        {getRequestActionLabel(request.action_type)}
-                      </span>
-                    </td>
-
-                    <td className="whitespace-nowrap px-5 py-4 text-right font-semibold text-slate-800">
-                      {formatCurrency(request.sale?.total ?? 0)}
-                    </td>
-
-                    <td className="px-5 py-4 text-center">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRequestStatusClass(
-                          request.status,
-                        )}`}
-                      >
-                        {getRequestStatusLabel(request.status)}
-                      </span>
-                    </td>
-
-                    <td className="whitespace-nowrap px-5 py-4 text-slate-500">
-                      {formatDate(request.created_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
-            {myActionRequests.some(
-              (request) => request.status === "pending",
-            ) && (
-              <div className="flex items-start gap-3 text-sm text-amber-700">
-                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="h-3.5 w-3.5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 8v4"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 16h.01"
-                    />
-                    <circle cx="12" cy="12" r="9" />
-                  </svg>
-                </div>
-
-                <p>
-                  You have a pending request waiting for Manager/Admin approval.
-                </p>
-              </div>
-            )}
-
-            {myActionRequests.some(
-              (request) => request.status === "rejected",
-            ) && (
-              <div className="mt-2 flex items-start gap-3 text-sm text-red-600">
-                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="h-3.5 w-3.5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="m9 9 6 6M15 9l-6 6"
-                    />
-                    <circle cx="12" cy="12" r="9" />
-                  </svg>
-                </div>
-
-                <p>
-                  Some of your requests were rejected. Check the request details
-                  in the table above.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Sales Table */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

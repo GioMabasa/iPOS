@@ -417,3 +417,39 @@ export async function getDailySales(): Promise<ReportResponse> {
   return response.data;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Export Sales Report
+|--------------------------------------------------------------------------
+*/
+
+export async function exportSalesReport(
+  params: {
+    period: ReportPeriod;
+    from?: string;
+    to?: string;
+    user_id?: number;
+    product_id?: number;
+    status?: "all" | "completed" | "voided" | "refunded";
+    sale_number?: string;
+    invoice_number?: string;
+  },
+): Promise<Blob> {
+  const token = localStorage.getItem("ipos_token");
+
+  const response = await api.get(
+    "/reports/sales/export",
+    {
+      params: buildParams(params),
+      responseType: "blob",
+      headers: {
+        Authorization: token
+          ? `Bearer ${token}`
+          : "",
+      },
+    },
+  );
+
+  return response.data;
+}
+

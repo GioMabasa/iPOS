@@ -71,11 +71,17 @@ export interface ExpenseSummary {
   expense_transactions: number;
 }
 
+export interface GetExpenseSummaryParams {
+  search?: string;
+  expense_category_id?: number;
+  payment_method?: string;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
 export const getExpenseSummary = async (
-  params?: {
-    date_from?: string;
-    date_to?: string;
-  }
+  params?: GetExpenseSummaryParams
 ): Promise<ExpenseSummary> => {
   const response = await api.get<ExpenseSummary>("/expenses/summary", {
     params,
@@ -131,3 +137,23 @@ export const deleteExpenseCategory = async (
   await api.delete(`/expense-categories/${id}`);
 };
 
+export interface ExportExpensesParams {
+  period?: string;
+  search?: string;
+  expense_category_id?: number;
+  payment_method?: string;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export const exportExpenses = async (
+  params?: ExportExpensesParams
+): Promise<Blob> => {
+  const response = await api.get("/expenses/export", {
+    params,
+    responseType: "blob",
+  });
+
+  return response.data;
+};

@@ -104,7 +104,7 @@ class SalesExport implements
         return [
             'A' => 18,
             'B' => 18,
-            'C' => 20,
+            'C' => 16,
             'D' => 24,
             'E' => 20,
             'F' => 10,
@@ -119,7 +119,8 @@ class SalesExport implements
             'O' => 14,
             'P' => 16,
             'Q' => 14,
-
+            'R' => 3,
+            'S' => 3,
         ];
     }
 
@@ -181,7 +182,6 @@ class SalesExport implements
                         return (float) ($sale['total'] ?? 0);
                     });
 
-
                 $outstandingBalance = $completedSales
                     ->filter(function ($sale) {
                         return strtolower(
@@ -229,6 +229,11 @@ class SalesExport implements
                 $sheet->insertNewRowBefore(1, $summaryRows);
 
                 /*
+                 * Worksheet presentation.
+                 */
+                $sheet->getTabColor('4F46E5');
+
+                /*
                  * Summary title.
                  */
                 $sheet->mergeCells('A1:S1');
@@ -242,6 +247,15 @@ class SalesExport implements
                     'font' => [
                         'bold' => true,
                         'size' => 16,
+                        'color' => [
+                            'rgb' => 'FFFFFF',
+                        ],
+                    ],
+                    'fill' => [
+                        'fillType' => 'solid',
+                        'color' => [
+                            'rgb' => '4F46E5',
+                        ],
                     ],
                     'alignment' => [
                         'horizontal' => 'center',
@@ -249,7 +263,7 @@ class SalesExport implements
                     ],
                 ]);
 
-                $sheet->getRowDimension(1)->setRowHeight(28);
+                $sheet->getRowDimension(1)->setRowHeight(30);
 
                 /*
                  * Period.
@@ -283,10 +297,20 @@ class SalesExport implements
 
                 $sheet->getStyle('A2:S2')->applyFromArray([
                     'font' => [
-                        'italic' => true,
+                        'bold' => true,
+                        'color' => [
+                            'rgb' => '475569',
+                        ],
+                    ],
+                    'fill' => [
+                        'fillType' => 'solid',
+                        'color' => [
+                            'rgb' => 'F8FAFC',
+                        ],
                     ],
                     'alignment' => [
                         'horizontal' => 'center',
+                        'vertical' => 'center',
                     ],
                 ]);
 
@@ -309,10 +333,20 @@ class SalesExport implements
 
                 $sheet->getStyle('A3:S3')->applyFromArray([
                     'font' => [
-                        'italic' => true,
+                        'bold' => true,
+                        'color' => [
+                            'rgb' => '475569',
+                        ],
+                    ],
+                    'fill' => [
+                        'fillType' => 'solid',
+                        'color' => [
+                            'rgb' => 'F8FAFC',
+                        ],
                     ],
                     'alignment' => [
                         'horizontal' => 'center',
+                        'vertical' => 'center',
                     ],
                 ]);
 
@@ -324,7 +358,9 @@ class SalesExport implements
                     int $labelRow,
                     int $valueRow,
                     string $title,
-                    array $cards
+                    array $cards,
+                    string $headingColor,
+                    string $headingTextColor = 'FFFFFF'
                 ) use ($sheet) {
 
                     $sheet->mergeCells(
@@ -341,13 +377,24 @@ class SalesExport implements
                     )->applyFromArray([
                         'font' => [
                             'bold' => true,
-                            'size' => 12,
+                            'size' => 11,
+                            'color' => [
+                                'rgb' => $headingTextColor,
+                            ],
+                        ],
+                        'fill' => [
+                            'fillType' => 'solid',
+                            'color' => [
+                                'rgb' => $headingColor,
+                            ],
                         ],
                         'alignment' => [
                             'horizontal' => 'left',
                             'vertical' => 'center',
                         ],
                     ]);
+
+                    $sheet->getRowDimension($headingRow)->setRowHeight(21);
 
                     foreach ($cards as $card) {
 
@@ -358,6 +405,18 @@ class SalesExport implements
                         $format =
                             $card['format']
                             ?? '#,##0.00';
+
+                        $labelColor =
+                            $card['labelColor']
+                            ?? 'EEF2FF';
+
+                        $valueColor =
+                            $card['valueColor']
+                            ?? 'F8FAFC';
+
+                        $valueTextColor =
+                            $card['valueTextColor']
+                            ?? '0F172A';
 
                         $sheet->mergeCells(
                             "{$start}{$labelRow}:{$end}{$labelRow}"
@@ -387,6 +446,9 @@ class SalesExport implements
                             'borders' => [
                                 'allBorders' => [
                                     'borderStyle' => 'thin',
+                                    'color' => [
+                                        'rgb' => 'CBD5E1',
+                                    ],
                                 ],
                             ],
                         ]);
@@ -396,11 +458,33 @@ class SalesExport implements
                         )->applyFromArray([
                             'font' => [
                                 'bold' => true,
+                                'size' => 10,
+                                'color' => [
+                                    'rgb' => '475569',
+                                ],
                             ],
                             'fill' => [
                                 'fillType' => 'solid',
                                 'color' => [
-                                    'rgb' => 'EFEFEF',
+                                    'rgb' => $labelColor,
+                                ],
+                            ],
+                        ]);
+
+                        $sheet->getStyle(
+                            "{$start}{$valueRow}"
+                        )->applyFromArray([
+                            'font' => [
+                                'bold' => true,
+                                'size' => 13,
+                                'color' => [
+                                    'rgb' => $valueTextColor,
+                                ],
+                            ],
+                            'fill' => [
+                                'fillType' => 'solid',
+                                'color' => [
+                                    'rgb' => $valueColor,
                                 ],
                             ],
                         ]);
@@ -409,10 +493,6 @@ class SalesExport implements
                             "{$start}{$valueRow}"
                         )->getNumberFormat()
                             ->setFormatCode($format);
-
-                        $sheet->getStyle(
-                            "{$start}{$valueRow}"
-                        )->getFont()->setBold(true);
                     }
                 };
 
@@ -431,6 +511,9 @@ class SalesExport implements
                             'start' => 'A',
                             'end' => 'D',
                             'format' => '#,##0.00',
+                            'labelColor' => 'E0E7FF',
+                            'valueColor' => 'EEF2FF',
+                            'valueTextColor' => '3730A3',
                         ],
                         [
                             'label' => 'Total COGS',
@@ -438,6 +521,9 @@ class SalesExport implements
                             'start' => 'F',
                             'end' => 'I',
                             'format' => '#,##0.00',
+                            'labelColor' => 'DBEAFE',
+                            'valueColor' => 'EFF6FF',
+                            'valueTextColor' => '1D4ED8',
                         ],
                         [
                             'label' => 'Gross Profit',
@@ -445,6 +531,9 @@ class SalesExport implements
                             'start' => 'K',
                             'end' => 'N',
                             'format' => '#,##0.00',
+                            'labelColor' => 'DCFCE7',
+                            'valueColor' => 'F0FDF4',
+                            'valueTextColor' => '15803D',
                         ],
                         [
                             'label' => 'Gross Margin',
@@ -452,8 +541,12 @@ class SalesExport implements
                             'start' => 'P',
                             'end' => 'S',
                             'format' => '0.00"%"',
+                            'labelColor' => 'EDE9FE',
+                            'valueColor' => 'F5F3FF',
+                            'valueTextColor' => '6D28D9',
                         ],
-                    ]
+                    ],
+                    '4F46E5'
                 );
 
                 /*
@@ -471,6 +564,9 @@ class SalesExport implements
                             'start' => 'A',
                             'end' => 'D',
                             'format' => '#,##0.00',
+                            'labelColor' => 'DCFCE7',
+                            'valueColor' => 'F0FDF4',
+                            'valueTextColor' => '15803D',
                         ],
                         [
                             'label' => 'Charge Sales',
@@ -478,6 +574,9 @@ class SalesExport implements
                             'start' => 'F',
                             'end' => 'I',
                             'format' => '#,##0.00',
+                            'labelColor' => 'FEF3C7',
+                            'valueColor' => 'FFFBEB',
+                            'valueTextColor' => 'B45309',
                         ],
                         [
                             'label' => 'Outstanding Balance',
@@ -485,8 +584,12 @@ class SalesExport implements
                             'start' => 'K',
                             'end' => 'N',
                             'format' => '#,##0.00',
+                            'labelColor' => 'FEE2E2',
+                            'valueColor' => 'FEF2F2',
+                            'valueTextColor' => 'B91C1C',
                         ],
-                    ]
+                    ],
+                    '0EA5E9'
                 );
 
                 /*
@@ -504,6 +607,9 @@ class SalesExport implements
                             'start' => 'A',
                             'end' => 'D',
                             'format' => '#,##0',
+                            'labelColor' => 'E0E7FF',
+                            'valueColor' => 'EEF2FF',
+                            'valueTextColor' => '3730A3',
                         ],
                         [
                             'label' => 'Total Items Sold',
@@ -511,6 +617,9 @@ class SalesExport implements
                             'start' => 'F',
                             'end' => 'I',
                             'format' => '#,##0',
+                            'labelColor' => 'DBEAFE',
+                            'valueColor' => 'EFF6FF',
+                            'valueTextColor' => '1D4ED8',
                         ],
                         [
                             'label' => 'Total Void',
@@ -518,6 +627,9 @@ class SalesExport implements
                             'start' => 'K',
                             'end' => 'N',
                             'format' => '#,##0',
+                            'labelColor' => 'FEE2E2',
+                            'valueColor' => 'FEF2F2',
+                            'valueTextColor' => 'B91C1C',
                         ],
                         [
                             'label' => 'Total Refund',
@@ -525,8 +637,12 @@ class SalesExport implements
                             'start' => 'P',
                             'end' => 'S',
                             'format' => '#,##0',
+                            'labelColor' => 'FEF3C7',
+                            'valueColor' => 'FFFBEB',
+                            'valueTextColor' => 'B45309',
                         ],
-                    ]
+                    ],
+                    '8B5CF6'
                 );
 
                 /*
@@ -544,6 +660,9 @@ class SalesExport implements
                             'start' => 'A',
                             'end' => 'H',
                             'format' => '#,##0.00',
+                            'labelColor' => 'FCE7F3',
+                            'valueColor' => 'FDF2F8',
+                            'valueTextColor' => 'BE185D',
                         ],
                         [
                             'label' => 'Total Tax',
@@ -551,8 +670,12 @@ class SalesExport implements
                             'start' => 'K',
                             'end' => 'S',
                             'format' => '#,##0.00',
+                            'labelColor' => 'CCFBF1',
+                            'valueColor' => 'F0FDFA',
+                            'valueTextColor' => '0F766E',
                         ],
-                    ]
+                    ],
+                    '14B8A6'
                 );
 
                 /*
@@ -576,27 +699,36 @@ class SalesExport implements
                 }
 
                 $sheet->getStyle(
-                    "A{$headerRow}:R{$headerRow}"
+                    "A{$headerRow}:Q{$headerRow}"
                 )->applyFromArray([
                     'font' => [
                         'bold' => true,
+                        'color' => [
+                            'rgb' => 'FFFFFF',
+                        ],
                     ],
                     'fill' => [
                         'fillType' => 'solid',
                         'color' => [
-                            'rgb' => 'D9EAF7',
+                            'rgb' => '4338CA',
                         ],
                     ],
                     'alignment' => [
                         'horizontal' => 'center',
                         'vertical' => 'center',
+                        'wrapText' => true,
                     ],
                     'borders' => [
                         'allBorders' => [
                             'borderStyle' => 'thin',
+                            'color' => [
+                                'rgb' => 'CBD5E1',
+                            ],
                         ],
                     ],
                 ]);
+
+                $sheet->getRowDimension($headerRow)->setRowHeight(30);
 
                 /*
                  * Detailed table data.
@@ -620,6 +752,32 @@ class SalesExport implements
                         $sheet->setCellValue(
                             "{$column}{$excelRow}",
                             $value
+                        );
+                    }
+
+                    /*
+                     * Date.
+                     */
+                    if (!empty($row[2])) {
+
+                        $sheet->setCellValue(
+                            "C{$excelRow}",
+                            \Carbon\Carbon::parse(
+                                $row[2]
+                            )->format('d/m/Y')
+                        );
+                    }
+
+                    /*
+                     * Due date.
+                     */
+                    if (!empty($row[15])) {
+
+                        $sheet->setCellValue(
+                            "P{$excelRow}",
+                            \Carbon\Carbon::parse(
+                                $row[15]
+                            )->format('d/m/Y')
                         );
                     }
 
@@ -656,6 +814,16 @@ class SalesExport implements
                         );
 
                     /*
+                     * Term.
+                     */
+                    $sheet->getStyle(
+                        "O{$excelRow}"
+                    )->getNumberFormat()
+                        ->setFormatCode(
+                            '#,##0'
+                        );
+
+                    /*
                      * Gross Margin.
                      */
                     $sheet->getStyle(
@@ -680,8 +848,17 @@ class SalesExport implements
                             'font' => [
                                 'bold' => true,
                                 'color' => [
-                                    'rgb' => '008000',
+                                    'rgb' => '15803D',
                                 ],
+                            ],
+                            'fill' => [
+                                'fillType' => 'solid',
+                                'color' => [
+                                    'rgb' => 'DCFCE7',
+                                ],
+                            ],
+                            'alignment' => [
+                                'horizontal' => 'center',
                             ],
                         ]);
                     } elseif ($status === 'voided') {
@@ -692,8 +869,17 @@ class SalesExport implements
                             'font' => [
                                 'bold' => true,
                                 'color' => [
-                                    'rgb' => 'C00000',
+                                    'rgb' => 'B91C1C',
                                 ],
+                            ],
+                            'fill' => [
+                                'fillType' => 'solid',
+                                'color' => [
+                                    'rgb' => 'FEE2E2',
+                                ],
+                            ],
+                            'alignment' => [
+                                'horizontal' => 'center',
                             ],
                         ]);
                     } elseif ($status === 'refunded') {
@@ -704,8 +890,17 @@ class SalesExport implements
                             'font' => [
                                 'bold' => true,
                                 'color' => [
-                                    'rgb' => 'BF6000',
+                                    'rgb' => 'B45309',
                                 ],
+                            ],
+                            'fill' => [
+                                'fillType' => 'solid',
+                                'color' => [
+                                    'rgb' => 'FEF3C7',
+                                ],
+                            ],
+                            'alignment' => [
+                                'horizontal' => 'center',
                             ],
                         ]);
                     }
@@ -721,11 +916,14 @@ class SalesExport implements
                 if ($lastDataRow >= $headerRow) {
 
                     $sheet->getStyle(
-                        "A{$headerRow}:S{$lastDataRow}"
+                        "A{$headerRow}:Q{$lastDataRow}"
                     )->applyFromArray([
                         'borders' => [
                             'allBorders' => [
                                 'borderStyle' => 'thin',
+                                'color' => [
+                                    'rgb' => 'E2E8F0',
+                                ],
                             ],
                         ],
                     ]);
@@ -739,7 +937,7 @@ class SalesExport implements
                     $sheet->getStyle(
                         "F"
                             . ($headerRow + 1)
-                            . ":S"
+                            . ":Q"
                             . $lastDataRow
                     )->getAlignment()
                         ->setHorizontal('right');
@@ -751,6 +949,14 @@ class SalesExport implements
                             . $lastDataRow
                     )->getAlignment()
                         ->setHorizontal('left');
+
+                    $sheet->getStyle(
+                        "N"
+                            . ($headerRow + 1)
+                            . ":Q"
+                            . $lastDataRow
+                    )->getAlignment()
+                        ->setHorizontal('center');
                 }
 
                 /*

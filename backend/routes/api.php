@@ -210,6 +210,12 @@ Route::middleware('auth:sanctum')->group(function () {
         );
 
         Route::get(
+            '/purchases/export',
+            [PurchaseController::class, 'export']
+        );
+
+
+        Route::get(
             '/purchases/{purchase}',
             [PurchaseController::class, 'show']
         );
@@ -262,6 +268,11 @@ Route::middleware('auth:sanctum')->group(function () {
         | Sales Reports
         |--------------------------------------------------------------------------
         */
+
+        Route::get(
+            '/reports/sales/export',
+            [ReportController::class, 'export']
+        );
 
         Route::get(
             '/reports/sales/summary',
@@ -323,6 +334,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get(
             '/expenses/summary',
             [ExpenseController::class, 'summary']
+        );
+
+        Route::get(
+            '/expenses/export',
+            [ExpenseController::class, 'export']
         );
 
         Route::get(
