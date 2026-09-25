@@ -14,6 +14,9 @@ import { getUsers, type User } from "../services/userService";
 import { getProducts } from "../services/productService";
 import type { Product } from "../types/product";
 
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
+
 export default function Reports() {
   const [sales, setSales] = useState<Sale[]>([]);
 
@@ -370,6 +373,12 @@ export default function Reports() {
     }
   };
 
+  /*
+  |--------------------------------------------------------------------------
+  | Export Sales Report
+  |--------------------------------------------------------------------------
+  */
+
   const handleExport = async () => {
     try {
       setExportLoading(true);
@@ -391,23 +400,28 @@ export default function Reports() {
 
       const blob = await exportSalesReport(params);
 
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-
-      link.href = url;
-
-      link.download = `reports-sales-${new Date()
+      const defaultFileName = `reports-sales-${new Date()
         .toISOString()
         .slice(0, 10)}.xlsx`;
 
-      document.body.appendChild(link);
+      const filePath = await save({
+        title: "Save Sales Report",
+        defaultPath: defaultFileName,
+        filters: [
+          {
+            name: "Excel Spreadsheet",
+            extensions: ["xlsx"],
+          },
+        ],
+      });
 
-      link.click();
+      if (!filePath) {
+        return;
+      }
 
-      link.remove();
+      const arrayBuffer = await blob.arrayBuffer();
 
-      window.URL.revokeObjectURL(url);
+      await writeFile(filePath, new Uint8Array(arrayBuffer));
     } catch (err) {
       console.error(err);
 
@@ -1369,7 +1383,7 @@ export default function Reports() {
                 className="h-4 w-4"
                 aria-hidden="true"
               >
-                <path d="M9 18l6-6-6-6" />
+                <path d="M9 18l6-6 6-6" />
               </svg>
             </button>
           </div>

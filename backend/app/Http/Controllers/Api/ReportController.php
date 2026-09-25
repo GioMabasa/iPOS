@@ -472,7 +472,6 @@ class ReportController extends Controller
                 $data,
                 $range['from'],
                 $range['to'],
-                $filters['status'] ?? 'completed'
             ),
             'reports-sales-' .
                 now()->format('Y-m-d') .

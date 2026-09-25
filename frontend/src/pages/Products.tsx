@@ -383,7 +383,7 @@ export default function Products() {
               />
             </svg>
 
-            {exporting ? "Exporting..." : "Export Expenses to Spreadsheet"}
+            {exporting ? "Exporting..." : "Export Products to Spreadsheet"}
           </button>
 
           <button

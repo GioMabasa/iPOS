@@ -507,15 +507,15 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      {/* Bottom area */}
+      {/* Copyright */}
       <div className="shrink-0 border-t border-slate-100 px-4 py-3">
-        <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-          <p className="truncate text-[11px] font-semibold text-slate-500">
-            iPOS Local POS
+        <div className="rounded-xl bg-slate-50 px-3 py-2.5 text-center">
+          <p className="text-[10px] font-semibold text-slate-500">
+            © 2026 GioTechWorks
           </p>
 
-          <p className="mt-0.5 text-[10px] text-slate-400">
-            Business Management System
+          <p className="mt-0.5 text-[9px] text-slate-400">
+            iPOS · All rights reserved.
           </p>
         </div>
       </div>
