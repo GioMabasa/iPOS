@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Exports\PurchasesExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PurchasesCsvExport;
 
 class PurchaseController extends Controller
 {
@@ -355,55 +356,29 @@ class PurchaseController extends Controller
         ], 201);
     }
 
-    /**
-     * Export purchases to spreadsheet.
-     */
     public function export(Request $request)
     {
         $validated = $request->validate([
-            'search' => [
-                'nullable',
-                'string',
-                'max:100',
-            ],
-
-            'supplier_id' => [
-                'nullable',
-                'integer',
-                'exists:suppliers,id',
-            ],
-
+            'search' => ['nullable', 'string', 'max:255'],
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'period' => [
                 'nullable',
                 'in:all,today,yesterday,this_week,this_month,this_year,custom',
             ],
-
-            'start_date' => [
-                'nullable',
-                'date',
-            ],
-
-            'end_date' => [
-                'nullable',
-                'date',
-                'after_or_equal:start_date',
-            ],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
         ]);
 
+        $period = $validated['period'] ?? 'all';
+
         $query = Purchase::query()
-            ->with([
-                'supplier',
-                'items.product',
-            ]);
+            ->with('supplier');
 
         /*
-    |--------------------------------------------------------------------------
-    | Search filter
-    |--------------------------------------------------------------------------
-    */
-
+     * Search
+     */
         if (!empty($validated['search'])) {
-            $search = trim($validated['search']);
+            $search = $validated['search'];
 
             $query->where(function ($q) use ($search) {
                 $q->where(
@@ -432,11 +407,8 @@ class PurchaseController extends Controller
         }
 
         /*
-    |--------------------------------------------------------------------------
-    | Supplier filter
-    |--------------------------------------------------------------------------
-    */
-
+     * Supplier
+     */
         if (!empty($validated['supplier_id'])) {
             $query->where(
                 'supplier_id',
@@ -445,136 +417,102 @@ class PurchaseController extends Controller
         }
 
         /*
-    |--------------------------------------------------------------------------
-    | Period filter
-    |--------------------------------------------------------------------------
-    |
-    | All date calculations use Asia/Manila.
-    |
-    */
+     * Date filters
+     */
+        $dateFrom = $validated['start_date'] ?? null;
+        $dateTo = $validated['end_date'] ?? null;
 
-        $period = $validated['period'] ?? 'all';
+        $timezone = 'Asia/Manila';
 
-        $dateFrom = null;
-        $dateTo = null;
+        switch ($period) {
+            case 'today':
+                $dateFrom = Carbon::now($timezone)
+                    ->startOfDay()
+                    ->toDateString();
 
-        if ($period !== 'all') {
-            $timezone = 'Asia/Manila';
-            $now = Carbon::now($timezone);
+                $dateTo = Carbon::now($timezone)
+                    ->endOfDay()
+                    ->toDateString();
 
-            switch ($period) {
-                case 'today':
-                    $dateFrom = $now->toDateString();
-                    $dateTo = $now->toDateString();
+                break;
 
-                    $query->whereDate(
-                        'purchase_date',
-                        $dateFrom
-                    );
+            case 'yesterday':
+                $yesterday = Carbon::now($timezone)
+                    ->subDay();
 
-                    break;
+                $dateFrom = $yesterday
+                    ->startOfDay()
+                    ->toDateString();
 
-                case 'yesterday':
-                    $yesterday = $now->copy()->subDay();
+                $dateTo = $yesterday
+                    ->endOfDay()
+                    ->toDateString();
 
-                    $dateFrom = $yesterday->toDateString();
-                    $dateTo = $yesterday->toDateString();
+                break;
 
-                    $query->whereDate(
-                        'purchase_date',
-                        $dateFrom
-                    );
+            case 'this_week':
+                $dateFrom = Carbon::now($timezone)
+                    ->startOfWeek()
+                    ->toDateString();
 
-                    break;
+                $dateTo = Carbon::now($timezone)
+                    ->endOfWeek()
+                    ->toDateString();
 
-                case 'this_week':
-                    $startOfWeek = $now
-                        ->copy()
-                        ->startOfWeek();
+                break;
 
-                    $endOfWeek = $now
-                        ->copy()
-                        ->endOfWeek();
+            case 'this_month':
+                $dateFrom = Carbon::now($timezone)
+                    ->startOfMonth()
+                    ->toDateString();
 
-                    $dateFrom = $startOfWeek->toDateString();
-                    $dateTo = $endOfWeek->toDateString();
+                $dateTo = Carbon::now($timezone)
+                    ->endOfMonth()
+                    ->toDateString();
 
-                    $query->whereBetween('purchase_date', [
-                        $dateFrom,
-                        $dateTo,
-                    ]);
+                break;
 
-                    break;
+            case 'this_year':
+                $dateFrom = Carbon::now($timezone)
+                    ->startOfYear()
+                    ->toDateString();
 
-                case 'this_month':
-                    $startOfMonth = $now
-                        ->copy()
-                        ->startOfMonth();
+                $dateTo = Carbon::now($timezone)
+                    ->endOfYear()
+                    ->toDateString();
 
-                    $endOfMonth = $now
-                        ->copy()
-                        ->endOfMonth();
+                break;
 
-                    $dateFrom = $startOfMonth->toDateString();
-                    $dateTo = $endOfMonth->toDateString();
+            case 'custom':
+                break;
 
-                    $query->whereBetween('purchase_date', [
-                        $dateFrom,
-                        $dateTo,
-                    ]);
-
-                    break;
-
-                case 'this_year':
-                    $startOfYear = $now
-                        ->copy()
-                        ->startOfYear();
-
-                    $endOfYear = $now
-                        ->copy()
-                        ->endOfYear();
-
-                    $dateFrom = $startOfYear->toDateString();
-                    $dateTo = $endOfYear->toDateString();
-
-                    $query->whereBetween('purchase_date', [
-                        $dateFrom,
-                        $dateTo,
-                    ]);
-
-                    break;
-
-                case 'custom':
-                    $dateFrom = $validated['start_date'] ?? null;
-                    $dateTo = $validated['end_date'] ?? null;
-
-                    if ($dateFrom && $dateTo) {
-                        $query->whereBetween('purchase_date', [
-                            $dateFrom,
-                            $dateTo,
-                        ]);
-                    }
-
-                    break;
-            }
+            case 'all':
+            default:
+                break;
         }
 
         /*
-    |--------------------------------------------------------------------------
-    | Get purchases
-    |--------------------------------------------------------------------------
-    */
+     * Apply date range.
+     */
+        if ($dateFrom) {
+            $query->whereDate(
+                'purchase_date',
+                '>=',
+                $dateFrom
+            );
+        }
 
-        $purchases = $query
-            ->latest()
-            ->get();
+        if ($dateTo) {
+            $query->whereDate(
+                'purchase_date',
+                '<=',
+                $dateTo
+            );
+        }
 
         /*
-    |--------------------------------------------------------------------------
-    | Supplier name
-    |--------------------------------------------------------------------------
-    */
-
+     * Get supplier label for XLSX report.
+     */
         $supplier = null;
 
         if (!empty($validated['supplier_id'])) {
@@ -584,14 +522,25 @@ class PurchaseController extends Controller
         }
 
         /*
-    |--------------------------------------------------------------------------
-    | Export
-    |--------------------------------------------------------------------------
-    */
+     * Determine export format.
+     *
+     * <= 10,000 records = XLSX
+     * > 10,000 records = CSV
+     */
+        $recordCount = (clone $query)->count();
 
+        if ($recordCount > config('ipos.purchases_export_max_records')) {
+            return (new PurchasesCsvExport(
+                purchaseQuery: $query->latest()
+            ))->download();
+        }
+
+        /*
+     * XLSX export for smaller datasets.
+     */
         return Excel::download(
             new PurchasesExport(
-                data: $purchases,
+                purchaseQuery: $query->latest(),
                 period: $period,
                 dateFrom: $dateFrom,
                 dateTo: $dateTo,

@@ -2,47 +2,29 @@
 
 namespace App\Exports;
 
-use Illuminate\Support\Collection;
-use Illuminate\Support\Enumerable;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
-use Maatwebsite\Excel\Concerns\WithCustomStartCell;
+use Generator;
+use Illuminate\Database\Eloquent\Builder;
+use Maatwebsite\Excel\Concerns\FromGenerator;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class PurchasesExport implements
-    FromCollection,
-    WithHeadings,
-    WithMapping,
-    WithColumnFormatting,
-    WithCustomStartCell,
-    WithEvents,
-    ShouldAutoSize
+class PurchasesExport implements FromGenerator, WithHeadings, WithEvents
 {
+    protected int $batchSize = 500;
+
     public function __construct(
-        protected Collection $data,
+        protected Builder $purchaseQuery,
         protected ?string $period = null,
         protected ?string $dateFrom = null,
         protected ?string $dateTo = null,
         protected ?string $search = null,
         protected ?string $supplier = null,
     ) {}
-
-    public function collection(): Enumerable
-    {
-        return $this->data;
-    }
-
-    public function startCell(): string
-    {
-        return 'A7';
-    }
 
     public function headings(): array
     {
@@ -60,31 +42,27 @@ class PurchasesExport implements
         ];
     }
 
-    public function map($purchase): array
+    public function generator(): Generator
     {
-        return [
-            $purchase->purchase_number,
-            $purchase->purchase_date,
-            $purchase->supplier?->name ?? '—',
-            $purchase->reference_number ?? '—',
-            $purchase->status,
-            (float) $purchase->subtotal,
-            (float) $purchase->discount,
-            (float) $purchase->tax,
-            (float) $purchase->total,
-            $purchase->notes ?? '—',
-        ];
-    }
+        $purchases = $this->purchaseQuery
+            ->clone()
+            ->with('supplier')
+            ->lazy($this->batchSize);
 
-    public function columnFormats(): array
-    {
-        return [
-            'B' => 'dd/mm/yyyy',
-            'F' => '#,##0.00',
-            'G' => '#,##0.00',
-            'H' => '#,##0.00',
-            'I' => '#,##0.00',
-        ];
+        foreach ($purchases as $purchase) {
+            yield [
+                $purchase->purchase_number,
+                $purchase->purchase_date,
+                $purchase->supplier?->name ?? '—',
+                $purchase->reference_number ?? '—',
+                $purchase->status,
+                (float) $purchase->subtotal,
+                (float) $purchase->discount,
+                (float) $purchase->tax,
+                (float) $purchase->total,
+                $purchase->notes ?? '—',
+            ];
+        }
     }
 
     public function registerEvents(): array
@@ -94,28 +72,16 @@ class PurchasesExport implements
                 $sheet = $event->sheet->getDelegate();
 
                 /*
-                |--------------------------------------------------------------------------
-                | iPOS Colors
-                |--------------------------------------------------------------------------
-                */
+                 * Add report header area.
+                 */
+                $sheet->insertNewRowBefore(1, 6);
 
-                $primary = '4F46E5';
-                $primaryDark = '3730A3';
-                $primaryLight = 'EEF2FF';
-
-                $slate50 = 'F8FAFC';
-                $slate200 = 'E2E8F0';
-                $slate600 = '475569';
-                $slate900 = '0F172A';
-
-                $white = 'FFFFFF';
+                $highestRow = $sheet->getHighestRow();
+                $dataStartRow = 8;
 
                 /*
-                |--------------------------------------------------------------------------
-                | Report Title
-                |--------------------------------------------------------------------------
-                */
-
+                 * Report title
+                 */
                 $sheet->mergeCells('A1:J1');
 
                 $sheet->setCellValue(
@@ -123,422 +89,275 @@ class PurchasesExport implements
                     'PURCHASES REPORT'
                 );
 
-                $sheet->getStyle('A1:J1')->applyFromArray([
+                $sheet->getStyle('A1')->applyFromArray([
                     'font' => [
                         'bold' => true,
                         'size' => 18,
-                        'color' => [
-                            'rgb' => $white,
-                        ],
-                    ],
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => [
-                            'rgb' => $primary,
-                        ],
                     ],
                     'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        'horizontal' => Alignment::HORIZONTAL_LEFT,
                         'vertical' => Alignment::VERTICAL_CENTER,
                     ],
                 ]);
 
-                $sheet->getRowDimension(1)->setRowHeight(34);
+                $sheet->getRowDimension(1)->setRowHeight(28);
 
                 /*
-                |--------------------------------------------------------------------------
-                | Generated Date
-                |--------------------------------------------------------------------------
-                */
-
+                 * Generated date
+                 */
                 $sheet->mergeCells('A2:J2');
 
                 $sheet->setCellValue(
                     'A2',
-                    'Generated: ' .
-                        now('Asia/Manila')->format('F d, Y h:i A')
+                    'Generated: ' . now()->format('F d, Y h:i A')
                 );
 
-                $sheet->getStyle('A2:J2')->applyFromArray([
+                $sheet->getStyle('A2')->applyFromArray([
                     'font' => [
+                        'italic' => true,
                         'size' => 10,
-                        'color' => [
-                            'rgb' => $slate600,
-                        ],
-                    ],
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => [
-                            'rgb' => $primaryLight,
-                        ],
-                    ],
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_CENTER,
-                        'vertical' => Alignment::VERTICAL_CENTER,
                     ],
                 ]);
 
-                $sheet->getRowDimension(2)->setRowHeight(22);
-
                 /*
-                |--------------------------------------------------------------------------
-                | Filter Summary
-                |--------------------------------------------------------------------------
-                */
-
-                $sheet->setCellValue(
-                    'A3',
-                    'SEARCH'
-                );
-
+                 * Filters
+                 */
+                $sheet->setCellValue('A3', 'Search');
                 $sheet->setCellValue(
                     'B3',
                     $this->search ?: 'All'
                 );
 
-                $sheet->setCellValue(
-                    'D3',
-                    'DATE FROM'
-                );
-
+                $sheet->setCellValue('D3', 'Supplier');
                 $sheet->setCellValue(
                     'E3',
-                    $this->formatDate($this->dateFrom)
-                );
-
-                $sheet->setCellValue(
-                    'A4',
-                    'SUPPLIER'
-                );
-
-                $sheet->setCellValue(
-                    'B4',
                     $this->supplier ?: 'All Suppliers'
                 );
 
+                $sheet->setCellValue('A4', 'Period');
                 $sheet->setCellValue(
-                    'D4',
-                    'DATE TO'
+                    'B4',
+                    $this->formatPeriod($this->period)
                 );
 
+                $sheet->setCellValue('D4', 'Date From');
                 $sheet->setCellValue(
                     'E4',
-                    $this->formatDate($this->dateTo)
+                    $this->dateFrom ?: '—'
                 );
 
+                $sheet->setCellValue('G4', 'Date To');
                 $sheet->setCellValue(
-                    'A5',
-                    'PERIOD'
+                    'H4',
+                    $this->dateTo ?: '—'
                 );
 
-                $sheet->setCellValue(
-                    'B5',
-                    $this->formatPeriod()
-                );
-
-                /*
-                |--------------------------------------------------------------------------
-                | Filter Labels
-                |--------------------------------------------------------------------------
-                */
-
-                $sheet->getStyle('A3:A5')->applyFromArray([
-                    'font' => [
-                        'bold' => true,
-                        'size' => 9,
-                        'color' => [
-                            'rgb' => $primaryDark,
-                        ],
-                    ],
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => [
-                            'rgb' => $primaryLight,
-                        ],
-                    ],
-                    'alignment' => [
-                        'vertical' => Alignment::VERTICAL_CENTER,
-                    ],
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => Border::BORDER_THIN,
-                            'color' => [
-                                'rgb' => $slate200,
-                            ],
-                        ],
-                    ],
-                ]);
-
-                $sheet->getStyle('D3:D4')->applyFromArray([
-                    'font' => [
-                        'bold' => true,
-                        'size' => 9,
-                        'color' => [
-                            'rgb' => $primaryDark,
-                        ],
-                    ],
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => [
-                            'rgb' => $primaryLight,
-                        ],
-                    ],
-                    'alignment' => [
-                        'vertical' => Alignment::VERTICAL_CENTER,
-                    ],
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => Border::BORDER_THIN,
-                            'color' => [
-                                'rgb' => $slate200,
-                            ],
-                        ],
-                    ],
-                ]);
-
-                /*
-                |--------------------------------------------------------------------------
-                | Filter Values
-                |--------------------------------------------------------------------------
-                */
-
-                $sheet->getStyle('B3:B5')->applyFromArray([
+                $sheet->getStyle('A3:H4')->applyFromArray([
                     'font' => [
                         'size' => 10,
-                        'color' => [
-                            'rgb' => $slate900,
-                        ],
-                    ],
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => [
-                            'rgb' => $white,
-                        ],
                     ],
                     'alignment' => [
                         'vertical' => Alignment::VERTICAL_CENTER,
-                    ],
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => Border::BORDER_THIN,
-                            'color' => [
-                                'rgb' => $slate200,
-                            ],
-                        ],
                     ],
                 ]);
 
-                $sheet->getStyle('E3:E4')->applyFromArray([
-                    'font' => [
-                        'size' => 10,
-                        'color' => [
-                            'rgb' => $slate900,
-                        ],
-                    ],
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => [
-                            'rgb' => $white,
-                        ],
-                    ],
-                    'alignment' => [
-                        'vertical' => Alignment::VERTICAL_CENTER,
-                    ],
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => Border::BORDER_THIN,
-                            'color' => [
-                                'rgb' => $slate200,
-                            ],
-                        ],
-                    ],
-                ]);
+                $sheet->getStyle('A3:A4')->getFont()->setBold(true);
+                $sheet->getStyle('D3:D4')->getFont()->setBold(true);
+                $sheet->getStyle('G4')->getFont()->setBold(true);
 
                 /*
-                |--------------------------------------------------------------------------
-                | Table Header
-                |--------------------------------------------------------------------------
-                */
-
+                 * Table header
+                 */
                 $sheet->getStyle('A7:J7')->applyFromArray([
                     'font' => [
                         'bold' => true,
-                        'size' => 10,
-                        'color' => [
-                            'rgb' => $white,
-                        ],
                     ],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
-                        'startColor' => [
-                            'rgb' => $primaryDark,
+                        'color' => [
+                            'rgb' => 'D9EAF7',
+                        ],
+                    ],
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => [
+                                'rgb' => 'B7B7B7',
+                            ],
                         ],
                     ],
                     'alignment' => [
                         'horizontal' => Alignment::HORIZONTAL_CENTER,
                         'vertical' => Alignment::VERTICAL_CENTER,
                     ],
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => Border::BORDER_THIN,
-                            'color' => [
-                                'rgb' => $primary,
-                            ],
-                        ],
-                    ],
                 ]);
 
-                $sheet->getRowDimension(7)->setRowHeight(28);
+                $sheet->getRowDimension(7)->setRowHeight(22);
 
                 /*
-                |--------------------------------------------------------------------------
-                | Data Rows
-                |--------------------------------------------------------------------------
-                */
-
-                $lastRow = 7 + $this->data->count();
-
-                if ($lastRow >= 8) {
-                    $sheet->getStyle("A8:J{$lastRow}")
-                        ->applyFromArray([
-                            'font' => [
-                                'size' => 10,
+                 * Data formatting
+                 */
+                if ($highestRow >= $dataStartRow) {
+                    $sheet->getStyle(
+                        "A{$dataStartRow}:J{$highestRow}"
+                    )->applyFromArray([
+                        'borders' => [
+                            'bottom' => [
+                                'borderStyle' => Border::BORDER_HAIR,
                                 'color' => [
-                                    'rgb' => $slate900,
+                                    'rgb' => 'D9D9D9',
                                 ],
                             ],
-                            'alignment' => [
-                                'vertical' => Alignment::VERTICAL_CENTER,
-                            ],
-                            'borders' => [
-                                'bottom' => [
-                                    'borderStyle' => Border::BORDER_HAIR,
-                                    'color' => [
-                                        'rgb' => $slate200,
-                                    ],
-                                ],
-                            ],
-                        ]);
+                        ],
+                        'alignment' => [
+                            'vertical' => Alignment::VERTICAL_CENTER,
+                        ],
+                    ]);
 
                     /*
-                    |--------------------------------------------------------------------------
-                    | Alternating Rows
-                    |--------------------------------------------------------------------------
-                    */
+                     * Purchase number as text
+                     */
+                    for (
+                        $row = $dataStartRow;
+                        $row <= $highestRow;
+                        $row++
+                    ) {
+                        $sheet->getCell("A{$row}")
+                            ->setDataType(DataType::TYPE_STRING);
+                    }
 
-                    for ($row = 8; $row <= $lastRow; $row++) {
+                    /*
+                     * Number formats
+                     */
+                    $sheet->getStyle(
+                        "F{$dataStartRow}:I{$highestRow}"
+                    )->getNumberFormat()
+                        ->setFormatCode('#,##0.00');
+
+                    /*
+                     * Date format
+                     */
+                    $sheet->getStyle(
+                        "B{$dataStartRow}:B{$highestRow}"
+                    )->getNumberFormat()
+                        ->setFormatCode('yyyy-mm-dd');
+
+                    /*
+                     * Alternate rows
+                     */
+                    for (
+                        $row = $dataStartRow;
+                        $row <= $highestRow;
+                        $row++
+                    ) {
                         if ($row % 2 === 0) {
-                            $sheet
-                                ->getStyle("A{$row}:J{$row}")
-                                ->getFill()
-                                ->setFillType(Fill::FILL_SOLID);
-
-                            $sheet
-                                ->getStyle("A{$row}:J{$row}")
-                                ->getFill()
-                                ->getStartColor()
-                                ->setRGB($slate50);
+                            $sheet->getStyle(
+                                "A{$row}:J{$row}"
+                            )->applyFromArray([
+                                'fill' => [
+                                    'fillType' => Fill::FILL_SOLID,
+                                    'color' => [
+                                        'rgb' => 'F8F9FA',
+                                    ],
+                                ],
+                            ]);
                         }
                     }
 
                     /*
-                    |--------------------------------------------------------------------------
-                    | Alignment
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $sheet
-                        ->getStyle("A8:A{$lastRow}")
-                        ->getAlignment()
-                        ->setHorizontal(
-                            Alignment::HORIZONTAL_LEFT
+                     * Status styling
+                     */
+                    for (
+                        $row = $dataStartRow;
+                        $row <= $highestRow;
+                        $row++
+                    ) {
+                        $status = strtolower(
+                            (string) $sheet
+                                ->getCell("E{$row}")
+                                ->getValue()
                         );
 
-                    $sheet
-                        ->getStyle("B8:B{$lastRow}")
-                        ->getAlignment()
-                        ->setHorizontal(
-                            Alignment::HORIZONTAL_CENTER
-                        );
-
-                    $sheet
-                        ->getStyle("E8:E{$lastRow}")
-                        ->getAlignment()
-                        ->setHorizontal(
-                            Alignment::HORIZONTAL_CENTER
-                        );
-
-                    $sheet
-                        ->getStyle("F8:I{$lastRow}")
-                        ->getAlignment()
-                        ->setHorizontal(
-                            Alignment::HORIZONTAL_RIGHT
-                        );
+                        if (
+                            $status === 'received' ||
+                            $status === 'cancelled'
+                        ) {
+                            $sheet->getStyle("E{$row}")
+                                ->getFont()
+                                ->setBold(true);
+                        }
+                    }
                 }
 
                 /*
-                |--------------------------------------------------------------------------
-                | Column Widths
-                |--------------------------------------------------------------------------
-                */
+                 * Column widths
+                 */
+                $widths = [
+                    'A' => 20,
+                    'B' => 15,
+                    'C' => 25,
+                    'D' => 20,
+                    'E' => 15,
+                    'F' => 14,
+                    'G' => 14,
+                    'H' => 14,
+                    'I' => 14,
+                    'J' => 35,
+                ];
 
-                $sheet->getColumnDimension('A')->setWidth(18);
-                $sheet->getColumnDimension('B')->setWidth(16);
-                $sheet->getColumnDimension('C')->setWidth(25);
-                $sheet->getColumnDimension('D')->setWidth(20);
-                $sheet->getColumnDimension('E')->setWidth(14);
-                $sheet->getColumnDimension('F')->setWidth(15);
-                $sheet->getColumnDimension('G')->setWidth(15);
-                $sheet->getColumnDimension('H')->setWidth(15);
-                $sheet->getColumnDimension('I')->setWidth(15);
-                $sheet->getColumnDimension('J')->setWidth(30);
-
-                /*
-                |--------------------------------------------------------------------------
-                | Excel Filter
-                |--------------------------------------------------------------------------
-                */
-
-                $sheet->setAutoFilter(
-                    "A7:J{$lastRow}"
-                );
+                foreach ($widths as $column => $width) {
+                    $sheet->getColumnDimension($column)
+                        ->setWidth($width);
+                }
 
                 /*
-                |--------------------------------------------------------------------------
-                | Freeze Table Header
-                |--------------------------------------------------------------------------
-                */
+                 * Table controls
+                 */
+                if ($highestRow >= 7) {
+                    $sheet->setAutoFilter(
+                        "A7:J{$highestRow}"
+                    );
+                }
 
                 $sheet->freezePane('A8');
+
+                /*
+                 * Sheet settings
+                 */
+                $sheet->setShowGridlines(false);
+
+                $sheet->getTabColor()
+                    ->setRGB('4472C4');
+
+                $sheet->getPageSetup()
+                    ->setOrientation('landscape')
+                    ->setFitToWidth(1)
+                    ->setFitToHeight(0);
+
+                $sheet->getPageMargins()
+                    ->setTop(0.4)
+                    ->setBottom(0.4)
+                    ->setLeft(0.3)
+                    ->setRight(0.3);
 
                 $sheet->setSelectedCell('A1');
             },
         ];
     }
 
-    private function formatDate(?string $date): string
+    protected function formatPeriod(?string $period): string
     {
-        if (!$date) {
-            return '—';
-        }
-
-        return date(
-            'd/m/Y',
-            strtotime($date)
-        );
-    }
-
-    private function formatPeriod(): string
-    {
-        return match ($this->period) {
+        return match ($period) {
             'today' => 'Today',
             'yesterday' => 'Yesterday',
             'this_week' => 'This Week',
             'this_month' => 'This Month',
             'this_year' => 'This Year',
             'custom' => 'Custom',
-            'all', null, '' => 'All',
-            default => $this->period,
+            'all', null => 'All',
+            default => ucwords(
+                str_replace('_', ' ', $period)
+            ),
         };
     }
 }
