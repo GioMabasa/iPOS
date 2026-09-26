@@ -302,28 +302,36 @@ export async function printReceipt(
   const businessAddress =
     options.businessAddress?.trim() || "";
 
-  const printWindow = window.open(
-    "",
-    "_blank",
-    "width=500,height=700",
+  const receiptHtml = buildReceiptHtml(
+    sale,
+    businessName,
+    businessAddress,
   );
 
-  if (!printWindow) {
-    throw new Error(
-      "Unable to open the receipt print window. Please allow pop-ups for iPOS.",
-    );
-  }
+  const printFrame = document.createElement("iframe");
+
+  printFrame.style.position = "fixed";
+  printFrame.style.right = "0";
+  printFrame.style.bottom = "0";
+  printFrame.style.width = "0";
+  printFrame.style.height = "0";
+  printFrame.style.border = "0";
+  printFrame.style.visibility = "hidden";
+
+  document.body.appendChild(printFrame);
 
   try {
-    const receiptHtml = buildReceiptHtml(
-      sale,
-      businessName,
-      businessAddress,
-    );
+    const printDocument = printFrame.contentDocument;
 
-    printWindow.document.open();
+    if (!printDocument) {
+      throw new Error(
+        "Unable to create the receipt print document.",
+      );
+    }
 
-    printWindow.document.write(`
+    printDocument.open();
+
+    printDocument.write(`
       <!DOCTYPE html>
 
       <html>
@@ -601,35 +609,39 @@ export async function printReceipt(
       </html>
     `);
 
-    printWindow.document.close();
+    printDocument.close();
 
     await new Promise<void>((resolve) => {
       const print = () => {
-        printWindow.focus();
+        const printWindow = printFrame.contentWindow;
 
+        if (!printWindow) {
+          resolve();
+          return;
+        }
+
+        printWindow.focus();
         printWindow.print();
 
         setTimeout(() => {
-          printWindow.close();
           resolve();
         }, 500);
       };
 
-      if (printWindow.document.readyState === "complete") {
+      if (printDocument.readyState === "complete") {
         setTimeout(print, 250);
         return;
       }
 
-      printWindow.addEventListener(
-        "load",
-        () => {
-          setTimeout(print, 250);
-        },
-        { once: true },
-      );
+      printFrame.onload = () => {
+        setTimeout(print, 250);
+      };
     });
   } catch (error) {
-    printWindow.close();
     throw error;
+  } finally {
+    setTimeout(() => {
+      printFrame.remove();
+    }, 600);
   }
 }
