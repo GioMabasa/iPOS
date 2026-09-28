@@ -226,25 +226,25 @@ export default function Inventory() {
 
       try {
         /*
-      |--------------------------------------------------------------------------
-      | Standard XLSX Export
-      |--------------------------------------------------------------------------
-      */
+        |--------------------------------------------------------------------------
+        | Standard XLSX Export
+        |--------------------------------------------------------------------------
+        */
 
         blob = await exportInventory(exportParams);
       } catch (err) {
         /*
-      |--------------------------------------------------------------------------
-      | Large Export Detection
-      |--------------------------------------------------------------------------
-      |
-      | Axios receives error responses as Blob because the original request
-      | uses responseType: "blob".
-      |
-      | Therefore we need to inspect the blob contents to determine whether
-      | the backend returned the expected 422 preflight response.
-      |
-      */
+        |--------------------------------------------------------------------------
+        | Large Export Detection
+        |--------------------------------------------------------------------------
+        |
+        | Axios receives error responses as Blob because the original request
+        | uses responseType: "blob".
+        |
+        | Therefore we need to inspect the blob contents to determine whether
+        | the backend returned the expected 422 preflight response.
+        |
+        */
 
         if (err && typeof err === "object" && "response" in err) {
           const response = (
@@ -273,10 +273,10 @@ export default function Inventory() {
 
             if (isLargeInventoryExport) {
               /*
-            |--------------------------------------------------------------------------
-            | CSV Fallback
-            |--------------------------------------------------------------------------
-            */
+              |--------------------------------------------------------------------------
+              | CSV Fallback
+              |--------------------------------------------------------------------------
+              */
 
               blob = await exportInventory({
                 ...exportParams,
@@ -296,10 +296,10 @@ export default function Inventory() {
       }
 
       /*
-    |--------------------------------------------------------------------------
-    | Save File
-    |--------------------------------------------------------------------------
-    */
+      |--------------------------------------------------------------------------
+      | Save File
+      |--------------------------------------------------------------------------
+      */
 
       const defaultFileName = `inventory-${new Date()
         .toISOString()
@@ -329,7 +329,6 @@ export default function Inventory() {
 
       if (err instanceof Error) {
         console.error("MESSAGE:", err.message);
-
         console.error("STACK:", err.stack);
       }
 
@@ -1364,7 +1363,7 @@ export default function Inventory() {
                   </th>
 
                   <th className="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Action
+                    Adjust
                   </th>
                 </tr>
               </thead>
@@ -1377,7 +1376,16 @@ export default function Inventory() {
                   return (
                     <tr
                       key={product.product_id}
-                      className="group transition hover:bg-slate-50/70"
+                      tabIndex={0}
+                      role="button"
+                      onClick={() => openProductDetails(product)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openProductDetails(product);
+                        }
+                      }}
+                      className="group cursor-pointer transition hover:bg-slate-50/70 focus:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-200"
                     >
                       <td className="px-4 py-4">
                         <div className="font-semibold text-slate-800">
@@ -1441,53 +1449,31 @@ export default function Inventory() {
                         </span>
                       </td>
 
-                      <td className="px-4 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openProductDetails(product)}
-                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                      <td
+                        className="px-4 py-4 text-center"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => openAdjustmentModal(product)}
+                          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            className="h-3.5 w-3.5"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              className="h-3.5 w-3.5"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M2.75 12s3.25-6 9.25-6 9.25 6 9.25 6-3.25 6-9.25 6-9.25-6-9.25-6Z"
-                              />
-                              <circle cx="12" cy="12" r="2.5" />
-                            </svg>
-                            View
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => openAdjustmentModal(product)}
-                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              className="h-3.5 w-3.5"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M12 5v14M5 12h14"
-                              />
-                            </svg>
-                            Adjust
-                          </button>
-                        </div>
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 5v14M5 12h14"
+                            />
+                          </svg>
+                          Adjust
+                        </button>
                       </td>
                     </tr>
                   );

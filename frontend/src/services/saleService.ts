@@ -26,9 +26,12 @@ export interface SalesSummary {
   charge_sales: number;
   total_discount: number;
   total_tax: number;
-  
+
   total_void: number;
   total_refund: number;
+
+  total_expense: number;
+  net_profit: number;
 }
 
 export interface SalesListResponse {
@@ -47,9 +50,19 @@ export async function getSales(params?: {
   page?: number;
 }): Promise<SalesListResponse> {
   const token = localStorage.getItem("ipos_token");
- 
 
-  const response = await api.get("/sales", {
+  const response = await api.get<{
+    data: {
+      data?: Sale[];
+      current_page?: number;
+      last_page?: number;
+      per_page?: number;
+      total?: number;
+      from?: number | null;
+      to?: number | null;
+    };
+    summary?: Partial<SalesSummary>;
+  }>("/sales", {
     params,
     headers: {
       Authorization: token ? `Bearer ${token}` : "",
@@ -57,9 +70,11 @@ export async function getSales(params?: {
   });
 
   const pagination = response.data.data;
+  const summary = response.data.summary;
 
   return {
     data: pagination.data ?? [],
+
     pagination: {
       current_page: pagination.current_page ?? 1,
       last_page: pagination.last_page ?? 1,
@@ -68,20 +83,23 @@ export async function getSales(params?: {
       from: pagination.from ?? null,
       to: pagination.to ?? null,
     },
+
     summary: {
-      total_transactions: response.data.summary?.total_transactions ?? 0,
-      total_items_sold: response.data.summary?.total_items_sold ?? 0,
-      total_sales: response.data.summary?.total_sales ?? 0,
-      total_cogs: response.data.summary?.total_cogs ?? 0,
-      gross_profit: response.data.summary?.gross_profit ?? 0,
-      gross_margin: response.data.summary?.gross_margin ?? 0,
-      cash_sales: response.data.summary?.cash_sales ?? 0,
-      charge_sales: response.data.summary?.charge_sales ?? 0,      
-      total_void: response.data.summary?.total_void ?? 0,
-      total_refund: response.data.summary?.total_refund ?? 0,
-      total_discount: response.data.summary?.total_discount ?? 0,
-      total_tax: response.data.summary?.total_tax ?? 0,
-     
+      total_transactions: summary?.total_transactions ?? 0,
+      total_items_sold: summary?.total_items_sold ?? 0,
+      total_sales: summary?.total_sales ?? 0,
+      total_cogs: summary?.total_cogs ?? 0,
+      gross_profit: summary?.gross_profit ?? 0,
+      gross_margin: summary?.gross_margin ?? 0,
+      cash_sales: summary?.cash_sales ?? 0,
+      charge_sales: summary?.charge_sales ?? 0,
+      total_void: summary?.total_void ?? 0,
+      total_refund: summary?.total_refund ?? 0,
+      total_discount: summary?.total_discount ?? 0,
+      total_tax: summary?.total_tax ?? 0,
+
+      total_expense: summary?.total_expense ?? 0,
+      net_profit: summary?.net_profit ?? 0,
     },
   };
 }

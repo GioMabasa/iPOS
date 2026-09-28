@@ -4,6 +4,7 @@ import {
   getProducts,
   getProductInventoryDetails,
   exportProducts,
+  updateProduct,
 } from "../services/productService";
 
 import { getCategories } from "../services/categoryService";
@@ -13,6 +14,8 @@ import type { Category } from "../types/category";
 
 import ProductForm from "../components/products/ProductForm";
 import ProductDetails from "../components/products/ProductDetails";
+import ProductHeader from "../components/products/ProductHeader";
+import ProductFilters from "../components/products/ProductFilters";
 
 export default function Products() {
   /*
@@ -233,6 +236,32 @@ export default function Products() {
 
   /*
   |--------------------------------------------------------------------------
+  | Toggle Product Status
+  |--------------------------------------------------------------------------
+  */
+
+  async function handleToggleProductStatus(product: Product) {
+    const newStatus = !product.is_active;
+
+    try {
+      await updateProduct(product.id, {
+        is_active: newStatus,
+      });
+
+      setProducts((currentProducts) =>
+        currentProducts.map((item) =>
+          item.id === product.id ? { ...item, is_active: newStatus } : item,
+        ),
+      );
+    } catch (err) {
+      console.error("Toggle product status error:", err);
+
+      setError("Failed to update product status.");
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
   | Close Product Form
   |--------------------------------------------------------------------------
   */
@@ -331,235 +360,26 @@ export default function Products() {
           HEADER
       ================================================================ */}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <svg
-                className="h-6 w-6"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M20 7.5 12 3 4 7.5m16 0L12 12 4 7.5m16 0V16.5L12 21l-8-4.5V7.5M12 12v9"
-                />
-              </svg>
-            </div>
-
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-                Products Management
-              </h1>
-
-              <p className="mt-0.5 text-sm text-gray-500">
-                Manage your products and inventory.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={handleExportProducts}
-            disabled={exporting}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 border border-emerald-200"
-          >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
-              />
-            </svg>
-
-            {exporting ? "Exporting..." : "Export Products to Spreadsheet"}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleAddProduct}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 5v14M5 12h14"
-              />
-            </svg>
-            Add Product
-          </button>
-        </div>
-      </div>
+      <ProductHeader
+        exporting={exporting}
+        onExport={handleExportProducts}
+        onAdd={handleAddProduct}
+      />
 
       {/* ================================================================
           FILTERS
       ================================================================ */}
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 xl:flex-row">
-          {/* Search */}
-
-          <div className="relative min-w-0 flex-1">
-            <svg
-              className="pointer-events-none absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-gray-400"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m20 20-4-4"
-              />
-            </svg>
-
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search name, SKU or barcode..."
-              className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-10 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            />
-
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-200 hover:text-gray-600"
-                aria-label="Clear search"
-              >
-                <span className="text-lg leading-none">×</span>
-              </button>
-            )}
-          </div>
-
-          {/* Category */}
-
-          <div className="relative">
-            <select
-              value={categoryFilter}
-              onChange={(event) =>
-                setCategoryFilter(
-                  event.target.value ? Number(event.target.value) : "",
-                )
-              }
-              className="h-11 w-full min-w-[190px] appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 pr-10 text-sm font-medium text-gray-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            >
-              <option value="">All Categories</option>
-
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-
-            <svg
-              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m6 9 6 6 6-6"
-              />
-            </svg>
-          </div>
-
-          {/* Status */}
-
-          <div className="relative">
-            <select
-              value={
-                statusFilter === "" ? "" : statusFilter ? "active" : "inactive"
-              }
-              onChange={(event) => {
-                const value = event.target.value;
-
-                if (value === "") {
-                  setStatusFilter("");
-                } else {
-                  setStatusFilter(value === "active");
-                }
-              }}
-              className="h-11 w-full min-w-[160px] appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 pr-10 text-sm font-medium text-gray-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-
-            <svg
-              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m6 9 6 6 6-6"
-              />
-            </svg>
-          </div>
-
-          {/* Clear */}
-
-          {(search || categoryFilter !== "" || statusFilter !== "") && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-            >
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 6h18M9 6V4h6v2m-8 0 1 14h8l1-14"
-                />
-              </svg>
-              Clear
-            </button>
-          )}
-        </div>
-
-        {(search || categoryFilter !== "" || statusFilter !== "") && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-            Filters are applied automatically.
-          </div>
-        )}
-      </div>
+      <ProductFilters
+        search={search}
+        categoryFilter={categoryFilter}
+        statusFilter={statusFilter}
+        categories={categories}
+        onSearchChange={setSearch}
+        onCategoryChange={setCategoryFilter}
+        onStatusChange={setStatusFilter}
+        onClear={clearFilters}
+      />
 
       {/* ================================================================
           TABLE
@@ -588,7 +408,7 @@ export default function Products() {
                 <path
                   className="opacity-90"
                   fill="currentColor"
-                  d="M21 12a9 9 0 0 0-9-9v3a6 6 0 0 1 6 6h3Z"
+                  d="M21 12a9 9 0 0 1-9-9v3a6 6 0 0 0 6 6h3Z"
                 />
               </svg>
             </div>
@@ -681,7 +501,7 @@ export default function Products() {
                       </th>
 
                       <th className="whitespace-nowrap px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Actions
+                        Edit
                       </th>
                     </tr>
                   </thead>
@@ -699,7 +519,16 @@ export default function Products() {
                       return (
                         <tr
                           key={product.id}
-                          className="group transition hover:bg-blue-50/30"
+                          tabIndex={0}
+                          role="button"
+                          onClick={() => handleViewProduct(product)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              handleViewProduct(product);
+                            }
+                          }}
+                          className="group cursor-pointer transition hover:bg-indigo-50/50 focus:bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-200"
                         >
                           {/* Product */}
 
@@ -792,52 +621,55 @@ export default function Products() {
 
                           {/* Status */}
 
-                          <td className="px-5 py-4">
-                            <span
-                              className={
-                                product.is_active
-                                  ? "inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700"
-                                  : "inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600"
-                              }
+                          <td
+                            className="px-5 py-4"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={product.is_active}
+                              aria-label={`Set ${product.name} ${
+                                product.is_active ? "inactive" : "active"
+                              }`}
+                              onClick={() => handleToggleProductStatus(product)}
+                              className="inline-flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             >
                               <span
                                 className={
                                   product.is_active
-                                    ? "h-1.5 w-1.5 rounded-full bg-green-500"
-                                    : "h-1.5 w-1.5 rounded-full bg-gray-400"
+                                    ? "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-green-500 transition"
+                                    : "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-gray-300 transition"
                                 }
-                              />
+                              >
+                                <span
+                                  className={
+                                    product.is_active
+                                      ? "inline-block h-4 w-4 translate-x-6 rounded-full bg-white shadow-sm transition"
+                                      : "inline-block h-4 w-4 translate-x-1 rounded-full bg-white shadow-sm transition"
+                                  }
+                                />
+                              </span>
 
-                              {product.is_active ? "Active" : "Inactive"}
-                            </span>
+                              <span
+                                className={
+                                  product.is_active
+                                    ? "text-xs font-semibold text-green-700"
+                                    : "text-xs font-semibold text-gray-500"
+                                }
+                              >
+                                {product.is_active ? "Active" : "Inactive"}
+                              </span>
+                            </button>
                           </td>
 
-                          {/* Actions */}
+                          {/* Edit */}
 
-                          <td className="px-5 py-4">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleViewProduct(product)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-                              >
-                                <svg
-                                  className="h-3.5 w-3.5"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
-                                  />
-                                  <circle cx="12" cy="12" r="2.5" />
-                                </svg>
-                                View
-                              </button>
-
+                          <td
+                            className="px-5 py-4"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <div className="flex justify-end">
                               <button
                                 type="button"
                                 onClick={() => handleEditProduct(product)}

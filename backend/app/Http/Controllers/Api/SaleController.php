@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Exports\SalesExport;
 use App\Http\Controllers\Controller;
+use App\Models\Expense;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Services\InventoryCostService;
@@ -198,6 +199,8 @@ class SaleController extends Controller
         /*
     |--------------------------------------------------------------------------
     | Gross Profit
+    |
+    | This remains affected by the Sales filters.
     |--------------------------------------------------------------------------
     */
 
@@ -212,6 +215,118 @@ class SaleController extends Controller
         $grossMargin = $totalSales > 0
             ? ($grossProfit / $totalSales) * 100
             : 0;
+
+        /*
+    |--------------------------------------------------------------------------
+    | Business-Level Gross Profit
+    |
+    | This calculation is intentionally independent of:
+    | - search
+    | - status
+    | - payment_method
+    | - user_id
+    |
+    | It only follows the selected date range.
+    |
+    | This value is used ONLY for Net Profit.
+    |--------------------------------------------------------------------------
+    */
+
+        $businessGrossProfitQuery = Sale::query()
+            ->where('status', 'completed');
+
+        if (!empty($validated['date_from'])) {
+            $businessGrossProfitQuery->whereDate(
+                'sale_date',
+                '>=',
+                $validated['date_from']
+            );
+        }
+
+        if (!empty($validated['date_to'])) {
+            $businessGrossProfitQuery->whereDate(
+                'sale_date',
+                '<=',
+                $validated['date_to']
+            );
+        }
+
+        $businessCompletedSales = $businessGrossProfitQuery
+            ->with('items')
+            ->get();
+
+        $businessTotalSales = $businessCompletedSales->sum(function ($sale) {
+            return (float) $sale->total;
+        });
+
+        $businessTotalCOGS = $businessCompletedSales->sum(function ($sale) {
+            return $sale->items->sum(function ($item) {
+                return (float) ($item->total_cost ?? 0);
+            });
+        });
+
+        $businessGrossProfit =
+            $businessTotalSales
+            - $businessTotalCOGS;
+
+        /*
+    |--------------------------------------------------------------------------
+    | Total Expense
+    |
+    | Business-level expense.
+    |
+    | Only Recorded expenses are included.
+    | Expenses follow the selected date range.
+    |
+    | Payment method, sales search, sales status, and
+    | cashier/user filters do not affect the expense summary.
+    |--------------------------------------------------------------------------
+    */
+
+        $expenseQuery = Expense::query()
+            ->where('status', 'Recorded');
+
+        if (!empty($validated['date_from'])) {
+            $expenseQuery->whereDate(
+                'expense_date',
+                '>=',
+                $validated['date_from']
+            );
+        }
+
+        if (!empty($validated['date_to'])) {
+            $expenseQuery->whereDate(
+                'expense_date',
+                '<=',
+                $validated['date_to']
+            );
+        }
+
+        $totalExpense = (float) $expenseQuery->sum('amount');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Net Profit
+    |
+    | IMPORTANT:
+    |
+    | Net Profit uses BUSINESS-LEVEL Gross Profit,
+    | not the filtered Gross Profit card.
+    |
+    | Net Profit = Business Gross Profit - Business Total Expense
+    |
+    | Therefore:
+    | - user filter does not affect Net Profit
+    | - search does not affect Net Profit
+    | - status filter does not affect Net Profit
+    | - payment method filter does not affect Net Profit
+    | - date range DOES affect Net Profit
+    |--------------------------------------------------------------------------
+    */
+
+        $netProfit =
+            $businessGrossProfit
+            - $totalExpense;
 
         /*
     |--------------------------------------------------------------------------
@@ -316,8 +431,15 @@ class SaleController extends Controller
                 'total_items_sold' => (float) $totalItemsSold,
                 'total_sales' => (float) $totalSales,
                 'total_cogs' => (float) $totalCOGS,
+
+                // Filtered Gross Profit card.
                 'gross_profit' => (float) $grossProfit,
+
                 'gross_margin' => round($grossMargin, 2),
+
+                // Business-level financial values.
+                'total_expense' => $totalExpense,
+                'net_profit' => (float) $netProfit,
 
                 'cash_sales' => (float) $cashSales,
                 'charge_sales' => (float) $chargeSales,

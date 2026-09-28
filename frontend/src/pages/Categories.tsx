@@ -581,7 +581,7 @@ export default function Categories() {
         <button
           type="button"
           onClick={openCreateModal}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
         >
           <PlusIcon className="h-4 w-4" />
           Add Category
@@ -765,7 +765,16 @@ export default function Categories() {
                   categories.map((category) => (
                     <tr
                       key={category.id}
-                      className="group transition hover:bg-slate-50/70"
+                      tabIndex={0}
+                      role="button"
+                      onClick={() => openEditModal(category)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openEditModal(category);
+                        }
+                      }}
+                      className="group cursor-pointer transition hover:bg-indigo-50/50 focus:bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-200"
                     >
                       {/* CATEGORY */}
 
@@ -793,8 +802,11 @@ export default function Categories() {
 
                       {/* ACTIONS */}
 
-                      <td className="px-5 py-4 text-right">
-                        <div className="flex justify-end gap-2">
+                      <td
+                        className="px-5 py-4 text-right"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <div className="flex justify-end gap-2 whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => openEditModal(category)}

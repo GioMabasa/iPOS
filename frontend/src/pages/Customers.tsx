@@ -871,7 +871,16 @@ export default function Customers() {
                   customers.map((customer) => (
                     <tr
                       key={customer.id}
-                      className="group transition hover:bg-slate-50/70"
+                      tabIndex={0}
+                      role="button"
+                      onClick={() => openEditModal(customer)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openEditModal(customer);
+                        }
+                      }}
+                      className="group cursor-pointer transition hover:bg-indigo-50/50 focus:bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-200"
                     >
                       {/* CUSTOMER */}
 
@@ -943,17 +952,13 @@ export default function Customers() {
 
                       {/* ACTIONS */}
 
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(customer)}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-                          >
-                            <EditIcon />
-                            Edit
-                          </button>
+                      {/* ACTIONS */}
 
+                      <td
+                        className="px-5 py-4"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <div className="flex justify-end">
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(customer)}

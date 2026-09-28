@@ -148,26 +148,6 @@ function CloseIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-function EyeIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
-      />
-      <circle cx="12" cy="12" r="2.5" />
-    </svg>
-  );
-}
-
 function CreditCardIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
@@ -604,7 +584,7 @@ export default function Receivables() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[1250px] w-full">
+            <table className="min-w-[1150px] w-full">
               <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -638,10 +618,6 @@ export default function Receivables() {
                   <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Status
                   </th>
-
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Action
-                  </th>
                 </tr>
               </thead>
 
@@ -649,7 +625,16 @@ export default function Receivables() {
                 {paginatedReceivables.map((receivable) => (
                   <tr
                     key={receivable.id}
-                    className="group transition hover:bg-slate-50/70"
+                    tabIndex={0}
+                    role="button"
+                    onClick={() => handleViewDetails(receivable.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleViewDetails(receivable.id);
+                      }
+                    }}
+                    className="group cursor-pointer transition hover:bg-indigo-50/50 focus:bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-200"
                   >
                     {/* CUSTOMER */}
 
@@ -733,21 +718,6 @@ export default function Receivables() {
 
                         {getStatusLabel(receivable.status)}
                       </span>
-                    </td>
-
-                    {/* ACTION */}
-
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleViewDetails(receivable.id)}
-                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                          View
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 ))}

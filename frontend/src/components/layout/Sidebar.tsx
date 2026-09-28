@@ -9,81 +9,121 @@ interface MenuItem {
   roles: Array<"admin" | "manager" | "cashier">;
 }
 
-const menuItems: MenuItem[] = [
+interface MenuGroup {
+  label: string;
+  items: MenuItem[];
+}
+
+const menuGroups: MenuGroup[] = [
   {
-    label: "Dashboard",
-    path: "/",
-    roles: ["admin", "manager", "cashier"],
+    label: "Operations",
+    items: [
+      {
+        label: "Dashboard",
+        path: "/",
+        roles: ["admin", "manager", "cashier"],
+      },
+      {
+        label: "POS",
+        path: "/pos",
+        roles: ["admin", "manager", "cashier"],
+      },
+      {
+        label: "Sales",
+        path: "/sales",
+        roles: ["admin", "manager", "cashier"],
+      },
+      {
+        label: "Receivables",
+        path: "/receivables",
+        roles: ["admin", "manager"],
+      },
+    ],
   },
+
   {
-    label: "POS",
-    path: "/pos",
-    roles: ["admin", "manager", "cashier"],
+    label: "Inventory",
+    items: [
+      {
+        label: "Product Management",
+        path: "/products",
+        roles: ["admin", "manager"],
+      },
+      {
+        label: "Category Management",
+        path: "/categories",
+        roles: ["admin", "manager"],
+      },
+      {
+        label: "Supplier Deliveries",
+        path: "/purchases",
+        roles: ["admin", "manager"],
+      },
+      {
+        label: "Supplier Management",
+        path: "/suppliers",
+        roles: ["admin", "manager"],
+      },
+      {
+        label: "Inventory Management",
+        path: "/inventory",
+        roles: ["admin", "manager"],
+      },
+    ],
   },
+
   {
-    label: "Sales",
-    path: "/sales",
-    roles: ["admin", "manager", "cashier"],
+    label: "Customers",
+    items: [
+      {
+        label: "Customer Management",
+        path: "/customers",
+        roles: ["admin", "manager"],
+      },
+    ],
   },
+
   {
-    label: "Receivables",
-    path: "/receivables",
-    roles: ["admin", "manager"],
+    label: "Expenses",
+    items: [
+      {
+        label: "Expense",
+        path: "/expenses",
+        roles: ["admin", "manager"],
+      },
+      {
+        label: "Expense Category Management",
+        path: "/expense-categories",
+        roles: ["admin", "manager"],
+      },
+    ],
   },
+
   {
-    label: "Expense",
-    path: "/expenses",
-    roles: ["admin", "manager"],
+    label: "Management",
+    items: [
+      {
+        label: "Approval Requests",
+        path: "/approval-requests",
+        roles: ["admin", "manager"],
+      },
+      {
+        label: "Reports",
+        path: "/reports",
+        roles: ["admin", "manager"],
+      },
+    ],
   },
+
   {
-    label: "Product Management",
-    path: "/products",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Category Management",
-    path: "/categories",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Supplier Management",
-    path: "/suppliers",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Supplier Deliveries",
-    path: "/purchases",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Inventory Management",
-    path: "/inventory",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Customer Management",
-    path: "/customers",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Approval Requests",
-    path: "/approval-requests",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Reports",
-    path: "/reports",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "Expense Category Management",
-    path: "/expense-categories",
-    roles: ["admin", "manager"],
-  },
-  {
-    label: "System Settings",
-    path: "/settings",
-    roles: ["admin"],
+    label: "System",
+    items: [
+      {
+        label: "System Settings",
+        path: "/settings",
+        roles: ["admin"],
+      },
+    ],
   },
 ];
 
@@ -231,10 +271,11 @@ function PurchasesIcon() {
       className="h-5 w-5"
       aria-hidden="true"
     >
-      <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.4L21 8H6" />
-      <circle cx="9" cy="20" r="1" />
-      <circle cx="18" cy="20" r="1" />
-      <path d="M14 4v6M11 7h6" />
+      <path d="M3 6h11v10H3z" />
+      <path d="M14 9h4l3 3v4h-7z" />
+      <circle cx="7" cy="18" r="1.5" />
+      <circle cx="18" cy="18" r="1.5" />
+      <path d="M14 13h7" />
     </svg>
   );
 }
@@ -355,7 +396,7 @@ function getMenuIcon(label: string) {
       return <SuppliersIcon />;
     case "Customer Management":
       return <CustomersIcon />;
-    case "Purchase Management":
+    case "Supplier Deliveries":
       return <PurchasesIcon />;
     case "Inventory Management":
       return <InventoryIcon />;
@@ -392,7 +433,7 @@ function getIconStyle(label: string) {
       return "bg-orange-50 text-orange-600";
     case "Customer Management":
       return "bg-pink-50 text-pink-600";
-    case "Purchase Management":
+    case "Supplier Deliveries":
       return "bg-cyan-50 text-cyan-600";
     case "Inventory Management":
       return "bg-indigo-50 text-indigo-600";
@@ -430,9 +471,14 @@ export default function Sidebar() {
     void loadSettings();
   }, []);
 
-  const visibleItems = menuItems.filter((item) =>
-    user ? item.roles.includes(user.role) : false,
-  );
+  const visibleGroups = menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) =>
+        user ? item.roles.includes(user.role) : false,
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white text-slate-900 shadow-sm">
@@ -460,51 +506,57 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-        <div className="mb-3 px-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-            Main Menu
-          </p>
-        </div>
+        <div className="space-y-1">
+          {visibleGroups.map((group) => (
+            <div key={group.label}>
+              <div className="mb-2 px-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  {group.label}
+                </p>
+              </div>
 
-        <ul className="space-y-0.5">
-          {visibleItems.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                end={item.path === "/"}
-                className={({ isActive }) =>
-                  `group flex min-h-8.5 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                    isActive
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <span
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition ${
-                        isActive
-                          ? "bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100"
-                          : `${getIconStyle(item.label)} group-hover:scale-105`
-                      }`}
+              <ul className="space-y-0.5">
+                {group.items.map((item) => (
+                  <li key={item.path}>
+                    <NavLink
+                      to={item.path}
+                      end={item.path === "/"}
+                      className={({ isActive }) =>
+                        `group flex min-h-8.5 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+                          isActive
+                            ? "bg-indigo-50 text-indigo-700"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        }`
+                      }
                     >
-                      {getMenuIcon(item.label)}
-                    </span>
+                      {({ isActive }) => (
+                        <>
+                          <span
+                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition ${
+                              isActive
+                                ? "bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100"
+                                : `${getIconStyle(item.label)} group-hover:scale-105`
+                            }`}
+                          >
+                            {getMenuIcon(item.label)}
+                          </span>
 
-                    <span className="min-w-0 flex-1 truncate">
-                      {item.label}
-                    </span>
+                          <span className="min-w-0 flex-1 truncate">
+                            {item.label}
+                          </span>
 
-                    {isActive && (
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" />
-                    )}
-                  </>
-                )}
-              </NavLink>
-            </li>
+                          {isActive && (
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" />
+                          )}
+                        </>
+                      )}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       </nav>
 
       {/* Copyright */}

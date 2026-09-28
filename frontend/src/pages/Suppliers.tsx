@@ -110,26 +110,6 @@ function CloseIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-function EditIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className={className}
-      aria-hidden="true"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 20h9" />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M16.5 3.5a2.121 2.121 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
-      />
-    </svg>
-  );
-}
-
 function TrashIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
@@ -396,6 +376,51 @@ export default function Suppliers() {
     setError("");
 
     setShowModal(true);
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Toggle Supplier Status
+  |--------------------------------------------------------------------------
+  */
+
+  async function handleToggleSupplierStatus(supplier: Supplier) {
+    const newStatus = !supplier.is_active;
+
+    try {
+      setError("");
+
+      await updateSupplier(supplier.id, {
+        name: supplier.name,
+        contact_person: supplier.contact_person ?? null,
+        phone: supplier.phone ?? null,
+        email: supplier.email ?? null,
+        address: supplier.address ?? null,
+        tax_number: supplier.tax_number ?? null,
+        notes: supplier.notes ?? null,
+        is_active: newStatus,
+      });
+
+      setSuppliers((currentSuppliers) =>
+        currentSuppliers.map((item) =>
+          item.id === supplier.id ? { ...item, is_active: newStatus } : item,
+        ),
+      );
+    } catch (err: unknown) {
+      console.error("Toggle supplier status error:", err);
+
+      const response = (
+        err as {
+          response?: {
+            data?: {
+              message?: string;
+            };
+          };
+        }
+      )?.response;
+
+      setError(response?.data?.message || "Failed to update supplier status.");
+    }
   }
 
   /*
@@ -869,7 +894,16 @@ export default function Suppliers() {
                   suppliers.map((supplier) => (
                     <tr
                       key={supplier.id}
-                      className="group transition hover:bg-slate-50/70"
+                      tabIndex={0}
+                      role="button"
+                      onClick={() => openEditModal(supplier)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openEditModal(supplier);
+                        }
+                      }}
+                      className="group cursor-pointer transition hover:bg-slate-50/70 focus:bg-slate-50/70 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-slate-200"
                     >
                       {/* SUPPLIER */}
 
@@ -919,35 +953,55 @@ export default function Suppliers() {
 
                       {/* STATUS */}
 
-                      <td className="px-5 py-4">
-                        {supplier.is_active ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            Active
+                      <td
+                        className="px-5 py-4"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={supplier.is_active}
+                          aria-label={`Set ${supplier.name} ${
+                            supplier.is_active ? "inactive" : "active"
+                          }`}
+                          onClick={() => handleToggleSupplierStatus(supplier)}
+                          className="inline-flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        >
+                          <span
+                            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
+                              supplier.is_active
+                                ? "bg-emerald-500"
+                                : "bg-slate-300"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition ${
+                                supplier.is_active
+                                  ? "translate-x-5"
+                                  : "translate-x-0.5"
+                              }`}
+                            />
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                            Inactive
+
+                          <span
+                            className={`text-xs font-semibold ${
+                              supplier.is_active
+                                ? "text-emerald-700"
+                                : "text-slate-500"
+                            }`}
+                          >
+                            {supplier.is_active ? "Active" : "Inactive"}
                           </span>
-                        )}
+                        </button>
                       </td>
 
                       {/* ACTIONS */}
 
-                      {/* ACTIONS */}
-
-                      <td className="px-5 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(supplier)}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-                          >
-                            <EditIcon className="h-4 w-4" />
-                            Edit
-                          </button>
-
+                      <td
+                        className="px-5 py-4 text-right"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <div className="flex justify-end">
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(supplier)}
@@ -1030,7 +1084,25 @@ export default function Suppliers() {
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   {editingSupplier ? (
-                    <EditIcon className="h-5 w-5" />
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-5 w-5"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 20h9"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16.5 3.5a2.121 2.121 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
+                      />
+                    </svg>
                   ) : (
                     <PlusIcon className="h-5 w-5" />
                   )}
