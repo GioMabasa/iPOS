@@ -27,6 +27,8 @@ interface PurchaseFiltersProps {
 
   purchaseEndDate: string;
   onEndDateChange: (value: string) => void;
+
+  onClearFilters: () => void;
 }
 
 export default function PurchaseFilters({
@@ -42,20 +44,21 @@ export default function PurchaseFilters({
   onStartDateChange,
   purchaseEndDate,
   onEndDateChange,
+  onClearFilters,
 }: PurchaseFiltersProps) {
   return (
     <div className="border-b border-slate-200 p-4 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-800">
-            Purchase Records
+            Delivery Records
           </p>
           <p className="mt-0.5 text-xs text-slate-400">
-            View and manage your received inventory purchases.
+            View and manage product deliveries received from suppliers
           </p>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
           {/* Search */}
           <div className="md:col-span-2 xl:col-span-4">
             <label className="mb-1.5 block text-xs font-semibold text-slate-600">
@@ -65,7 +68,7 @@ export default function PurchaseFilters({
               type="text"
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Purchase no., supplier, reference..."
+              placeholder="Delivery no., supplier, reference..."
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
@@ -149,6 +152,35 @@ export default function PurchaseFilters({
               </div>
             </>
           )}
+
+          {/* Clear Filters */}
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-4 w-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 4v5h5M20 20v-5h-5"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5.5 9A7.5 7.5 0 0 1 18 6.5M18.5 15A7.5 7.5 0 0 1 6 17.5"
+                />
+              </svg>
+              Clear Filters
+            </button>
+          </div>
         </div>
       </div>
     </div>

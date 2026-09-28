@@ -121,7 +121,7 @@ export default function AddPurchaseModal({
 
             <div>
               <h2 className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
-                Add Purchase
+                Add Supplier Delivery
               </h2>
 
               <div className="mt-1 flex items-center gap-2">
@@ -191,11 +191,11 @@ export default function AddPurchaseModal({
               <div className="mb-4 flex items-end justify-between gap-4">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Purchase Information
+                    Delivery Information
                   </h3>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    Enter the supplier and purchase reference details.
+                    Enter the supplier and delivery reference details.
                   </p>
                 </div>
 
@@ -238,7 +238,7 @@ export default function AddPurchaseModal({
 
                 <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/70 to-white p-4">
                   <label className="mb-2.5 block text-[10px] font-bold uppercase tracking-wider text-sky-600">
-                    Purchase Date <span className="text-red-500">*</span>
+                    Delivery Date <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -282,7 +282,7 @@ export default function AddPurchaseModal({
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Purchase Items
+                    Delivery Items
                   </h3>
 
                   <p className="mt-1 text-xs text-slate-500">
@@ -512,7 +512,7 @@ export default function AddPurchaseModal({
                   <h3 className="text-sm font-bold text-slate-900">Notes</h3>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    Add any optional notes for this purchase.
+                    Add any optional notes for this Delivery.
                   </p>
                 </div>
 
@@ -550,11 +550,11 @@ export default function AddPurchaseModal({
 
                   <div>
                     <p className="text-sm font-bold text-slate-900">
-                      Purchase Summary
+                      Delivery Summary
                     </p>
 
                     <p className="text-xs text-slate-500">
-                      Review the final purchase amount.
+                      Review the final delivery amount.
                     </p>
                   </div>
                 </div>
@@ -618,7 +618,7 @@ export default function AddPurchaseModal({
                   <div className="flex items-end justify-between gap-4">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">
-                        Total Purchase
+                        Total Delivery
                       </p>
 
                       <p className="mt-1 text-2xl font-extrabold tracking-tight text-indigo-600">
@@ -691,7 +691,7 @@ export default function AddPurchaseModal({
                       d="M5 12.5 9.5 17 19 7.5"
                     />
                   </svg>
-                  Receive Purchase
+                  Receive Delivery
                 </>
               )}
             </button>

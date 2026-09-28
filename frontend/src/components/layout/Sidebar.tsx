@@ -51,7 +51,7 @@ const menuItems: MenuItem[] = [
     roles: ["admin", "manager"],
   },
   {
-    label: "Purchase Management",
+    label: "Supplier Deliveries",
     path: "/purchases",
     roles: ["admin", "manager"],
   },

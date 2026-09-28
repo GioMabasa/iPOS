@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import type { Purchase } from "../../types/purchase";
 
 interface PurchaseTableProps {
@@ -34,6 +35,16 @@ export default function PurchaseTable({
   onPreviousPage,
   onNextPage,
 }: PurchaseTableProps) {
+  const handleRowKeyDown = (
+    event: KeyboardEvent<HTMLTableRowElement>,
+    purchase: Purchase,
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onViewPurchase(purchase);
+    }
+  };
+
   return (
     <>
       <div className="overflow-x-auto">
@@ -50,7 +61,7 @@ export default function PurchaseTable({
             <thead className="border-b border-slate-200 bg-slate-50/70">
               <tr>
                 <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Purchase #
+                  Delivery #
                 </th>
 
                 <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -72,17 +83,13 @@ export default function PurchaseTable({
                 <th className="px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Total
                 </th>
-
-                <th className="px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Actions
-                </th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100">
               {purchases.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-16 text-center">
+                  <td colSpan={6} className="px-5 py-16 text-center">
                     <div className="mx-auto flex max-w-sm flex-col items-center">
                       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
                         <svg
@@ -102,14 +109,14 @@ export default function PurchaseTable({
 
                       <p className="text-sm font-semibold text-slate-700">
                         {search
-                          ? "No purchases match your search."
-                          : "No purchases found."}
+                          ? "No supplier deliveries match your search."
+                          : "No supplier deliveries found."}
                       </p>
 
                       <p className="mt-1 text-xs text-slate-400">
                         {search
-                          ? "Try a different purchase number, supplier, or reference."
-                          : "Received purchases will appear here."}
+                          ? "Try a different supplier deliveries number, supplier, or reference."
+                          : "Received supplier deliveries will appear here."}
                       </p>
                     </div>
                   </td>
@@ -118,11 +125,15 @@ export default function PurchaseTable({
                 purchases.map((purchase) => (
                   <tr
                     key={purchase.id}
-                    className="group transition hover:bg-slate-50/70"
+                    tabIndex={0}
+                    role="button"
+                    onClick={() => onViewPurchase(purchase)}
+                    onKeyDown={(event) => handleRowKeyDown(event, purchase)}
+                    className="group cursor-pointer transition hover:bg-indigo-50/50 focus:bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-200"
                   >
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-100 group-hover:text-indigo-700">
                           <svg
                             viewBox="0 0 24 24"
                             fill="none"
@@ -184,30 +195,6 @@ export default function PurchaseTable({
                         ₱{formatCurrency(purchase.total)}
                       </span>
                     </td>
-
-                    <td className="px-5 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => onViewPurchase(purchase)}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          className="h-3.5 w-3.5"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
-                          />
-                          <circle cx="12" cy="12" r="2.5" />
-                        </svg>
-                        View
-                      </button>
-                    </td>
                   </tr>
                 ))
               )}
@@ -220,8 +207,8 @@ export default function PurchaseTable({
         <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-500">
             {total > 0
-              ? `Showing ${from}–${to} of ${total} purchases`
-              : "No purchases"}
+              ? `Showing ${from}–${to} of ${total} supplier deliveries`
+              : "No supplier deliveries"}
           </p>
 
           <div className="flex items-center gap-2">
