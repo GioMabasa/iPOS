@@ -66,11 +66,12 @@ export default function AppRoutes() {
           <Route path="/pos" element={<POS />} />
 
           <Route path="/sales" element={<Sales />} />
+
+          <Route path="/products" element={<Products />} />
         </Route>
 
         {/* Admin + Manager */}
         <Route element={<ProtectedRoute allowedRoles={["admin", "manager"]} />}>
-          <Route path="/products" element={<Products />} />
           <Route path="/receivables" element={<Receivables />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/suppliers" element={<Suppliers />} />

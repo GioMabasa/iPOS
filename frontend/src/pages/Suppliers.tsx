@@ -14,6 +14,8 @@ import type {
   SupplierStatusFilter,
 } from "../types/supplier";
 
+import SuccessMessage from "../components/SuccessMessage";
+
 /*
 |--------------------------------------------------------------------------
 | Constants
@@ -128,26 +130,6 @@ function TrashIcon({ className = "h-4 w-4" }: { className?: string }) {
         d="M19 6l-1 14H6L5 6"
       />
       <path strokeLinecap="round" d="M10 11v5M14 11v5" />
-    </svg>
-  );
-}
-
-function CheckCircleIcon({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className={className}
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m8 12 2.5 2.5L16 9"
-      />
     </svg>
   );
 }
@@ -305,16 +287,6 @@ export default function Suppliers() {
       setLoading(false);
     }
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Initial Load
-  |--------------------------------------------------------------------------
-  */
-
-  useEffect(() => {
-    loadSuppliers(1);
-  }, []);
 
   /*
   |--------------------------------------------------------------------------
@@ -669,13 +641,11 @@ export default function Suppliers() {
           SUCCESS MESSAGE
       ================================================================ */}
 
-      {successMessage && (
-        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-sm">
-          <CheckCircleIcon className="h-5 w-5 shrink-0" />
-
-          <span>{successMessage}</span>
-        </div>
-      )}
+      <SuccessMessage
+        message={successMessage}
+        onClose={() => setSuccessMessage("")}
+        title="Supplier Saved"
+      />
 
       {/* ================================================================
           ERROR MESSAGE

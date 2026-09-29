@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use App\Exports\ProductsExport;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -50,95 +51,41 @@ class ProductController extends Controller
                 'category',
                 'suppliers',
             ])
-
-            /*
-        |--------------------------------------------------------------------------
-        | Search
-        |--------------------------------------------------------------------------
-        */
-
             ->when(
                 !empty($validated['search']),
                 function ($query) use ($validated) {
-
                     $search = $validated['search'];
 
                     $query->where(function ($query) use ($search) {
-
                         $query
-                            ->where(
-                                'name',
-                                'like',
-                                "%{$search}%"
-                            )
-
-                            ->orWhere(
-                                'sku',
-                                'like',
-                                "%{$search}%"
-                            )
-
-                            ->orWhere(
-                                'barcode',
-                                'like',
-                                "%{$search}%"
-                            );
+                            ->where('name', 'like', "%{$search}%")
+                            ->orWhere('sku', 'like', "%{$search}%")
+                            ->orWhere('barcode', 'like', "%{$search}%");
                     });
                 }
             )
-
-            /*
-        |--------------------------------------------------------------------------
-        | Category Filter
-        |--------------------------------------------------------------------------
-        */
-
             ->when(
                 isset($validated['category_id']),
                 function ($query) use ($validated) {
-
                     $query->where(
                         'category_id',
                         $validated['category_id']
                     );
                 }
             )
-
-            /*
-        |--------------------------------------------------------------------------
-        | Active / Inactive Filter
-        |--------------------------------------------------------------------------
-        */
-
             ->when(
                 isset($validated['is_active']),
                 function ($query) use ($validated) {
-
                     $query->where(
                         'is_active',
                         $validated['is_active']
                     );
                 }
             )
-
-            /*
-        |--------------------------------------------------------------------------
-        | Latest Products First
-        |--------------------------------------------------------------------------
-        */
-
             ->latest()
-
-            /*
-        |--------------------------------------------------------------------------
-        | Pagination
-        |--------------------------------------------------------------------------
-        */
-
             ->paginate(
                 $validated['per_page'] ?? 20
             )
-
             ->withQueryString();
 
         return response()->json($products);
@@ -237,6 +184,14 @@ class ProductController extends Controller
             ],
         ]);
 
+        /*
+         * Cashier-created products must always start as inactive.
+         * The cashier cannot activate a product during creation.
+         */
+        if (Auth::user()?->role === 'cashier') {
+            $validated['is_active'] = false;
+        }
+
         $product = Product::create($validated);
 
         return response()->json([
@@ -262,6 +217,19 @@ class ProductController extends Controller
         Request $request,
         Product $product
     ): JsonResponse {
+        /*
+         * Cashiers may edit inactive products only.
+         * Active products can only be edited by Admin/Manager.
+         */
+        if (
+            Auth::user()?->role === 'cashier' &&
+            $product->is_active
+        ) {
+            return response()->json([
+                'message' => 'Cashiers can only edit inactive products.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'category_id' => [
                 'nullable',
@@ -322,6 +290,15 @@ class ProductController extends Controller
             ],
         ]);
 
+        /*
+         * Cashiers are never allowed to change product status.
+         * Even if the frontend sends is_active=true, keep the
+         * existing status unchanged.
+         */
+        if (Auth::user()?->role === 'cashier') {
+            unset($validated['is_active']);
+        }
+
         $product->update($validated);
 
         return response()->json([
@@ -335,6 +312,12 @@ class ProductController extends Controller
 
     public function destroy(Product $product): JsonResponse
     {
+        if (Auth::user()?->role === 'cashier') {
+            return response()->json([
+                'message' => 'Cashiers are not allowed to deactivate products.',
+            ], 403);
+        }
+
         $product->update([
             'is_active' => false,
         ]);
@@ -348,6 +331,12 @@ class ProductController extends Controller
         Request $request,
         Product $product
     ): JsonResponse {
+        if (Auth::user()?->role === 'cashier') {
+            return response()->json([
+                'message' => 'Cashiers are not allowed to edit product suppliers.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'suppliers' => [
                 'required',

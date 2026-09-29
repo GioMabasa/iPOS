@@ -47,7 +47,7 @@ const menuGroups: MenuGroup[] = [
       {
         label: "Product Management",
         path: "/products",
-        roles: ["admin", "manager"],
+        roles: ["admin", "manager", "cashier"],
       },
       {
         label: "Category Management",

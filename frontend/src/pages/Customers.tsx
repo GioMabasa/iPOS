@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import SuccessMessage from "../components/SuccessMessage";
+
 import {
   createCustomer,
   deleteCustomer,
@@ -116,22 +118,6 @@ function UsersIcon() {
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
-
-function CheckCircleIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="h-5 w-5"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8 12 2.5 2.5L16 9" />
     </svg>
   );
 }
@@ -347,16 +333,6 @@ export default function Customers() {
       setLoading(false);
     }
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Initial Load
-  |--------------------------------------------------------------------------
-  */
-
-  useEffect(() => {
-    loadCustomers(1);
-  }, []);
 
   /*
   |--------------------------------------------------------------------------
@@ -650,15 +626,11 @@ export default function Customers() {
           SUCCESS MESSAGE
       ================================================================ */}
 
-      {successMessage && (
-        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-sm">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600">
-            <CheckCircleIcon />
-          </div>
-
-          <span className="font-medium">{successMessage}</span>
-        </div>
-      )}
+      <SuccessMessage
+        message={successMessage}
+        onClose={() => setSuccessMessage("")}
+        title="Customer Saved"
+      />
 
       {/* ================================================================
           ERROR MESSAGE
@@ -949,8 +921,6 @@ export default function Customers() {
                           </span>
                         )}
                       </td>
-
-                      {/* ACTIONS */}
 
                       {/* ACTIONS */}
 

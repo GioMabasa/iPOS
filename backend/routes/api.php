@@ -166,7 +166,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Products
+        | Products - Admin and Manager
         |--------------------------------------------------------------------------
         */
 
@@ -175,26 +175,51 @@ Route::middleware('auth:sanctum')->group(function () {
             [ProductController::class, 'export']
         );
 
-        Route::apiResource(
-            'products',
-            ProductController::class
-        );
-
         Route::post(
             '/products/{product}/suppliers',
             [ProductController::class, 'syncSuppliers']
         );
 
+        Route::put(
+            '/products/{product}',
+            [ProductController::class, 'update']
+        );
+
+        Route::patch(
+            '/products/{product}',
+            [ProductController::class, 'update']
+        );
+
+        Route::delete(
+            '/products/{product}',
+            [ProductController::class, 'destroy']
+        );
+
 
         /*
         |--------------------------------------------------------------------------
-        | Categories
+        | Categories - Admin and Manager
         |--------------------------------------------------------------------------
         */
 
-        Route::apiResource(
-            'categories',
-            CategoryController::class
+        Route::post(
+            '/categories',
+            [CategoryController::class, 'store']
+        );
+
+        Route::put(
+            '/categories/{category}',
+            [CategoryController::class, 'update']
+        );
+
+        Route::patch(
+            '/categories/{category}',
+            [CategoryController::class, 'update']
+        );
+
+        Route::delete(
+            '/categories/{category}',
+            [CategoryController::class, 'destroy']
         );
 
 
@@ -213,7 +238,6 @@ Route::middleware('auth:sanctum')->group(function () {
             '/purchases/export',
             [PurchaseController::class, 'export']
         );
-
 
         Route::get(
             '/purchases/{purchase}',
@@ -380,6 +404,45 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get(
             '/settings',
             [SettingController::class, 'show']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Products - Admin, Manager, and Cashier
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/products',
+            [ProductController::class, 'index']
+        );
+
+        Route::get(
+            '/products/{product}',
+            [ProductController::class, 'show']
+        );
+
+        Route::post(
+            '/products',
+            [ProductController::class, 'store']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Categories - Admin, Manager, and Cashier
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/categories',
+            [CategoryController::class, 'index']
+        );
+
+        Route::get(
+            '/categories/{category}',
+            [CategoryController::class, 'show']
         );
 
 

@@ -16,6 +16,7 @@ import PurchaseTable from "../components/purchases/PurchaseTable";
 import AddPurchaseModal from "../components/purchases/AddPurchaseModal";
 import ProductPickerModal from "../components/purchases/ProductPickerModal";
 import ViewPurchaseModal from "../components/purchases/ViewPurchaseModal";
+import SuccessMessage from "../components/SuccessMessage";
 
 import { getProducts } from "../services/productService";
 
@@ -1016,27 +1017,11 @@ export default function Purchases() {
           SUCCESS MESSAGE
       ================================================================ */}
 
-      {successMessage && (
-        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-sm">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m5 12 4 4L19 6"
-              />
-            </svg>
-          </div>
-
-          <span className="font-medium">{successMessage}</span>
-        </div>
-      )}
+      <SuccessMessage
+        message={successMessage}
+        onClose={() => setSuccessMessage("")}
+        title="Delivery Saved"
+      />
 
       {/* ================================================================
           PAGE ERROR

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   createCategory,
@@ -8,6 +8,7 @@ import {
 } from "../services/categoryService";
 
 import type { Category, CategoryFormData } from "../types/category";
+import SuccessMessage from "../components/SuccessMessage";
 
 /*
 |--------------------------------------------------------------------------
@@ -138,26 +139,6 @@ function TrashIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-function CheckCircleIcon({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className={className}
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m8 12 2.5 2.5L16 9"
-      />
-    </svg>
-  );
-}
-
 function AlertCircleIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg
@@ -247,8 +228,6 @@ export default function Categories() {
 
   const [search, setSearch] = useState("");
 
-  const isFirstSearchEffect = useRef(true);
-
   /*
   |--------------------------------------------------------------------------
   | Modal
@@ -304,16 +283,6 @@ export default function Categories() {
 
   /*
   |--------------------------------------------------------------------------
-  | Initial Load
-  |--------------------------------------------------------------------------
-  */
-
-  useEffect(() => {
-    loadCategories(1);
-  }, []);
-
-  /*
-  |--------------------------------------------------------------------------
   | AJAX Search
   |--------------------------------------------------------------------------
   |
@@ -322,11 +291,6 @@ export default function Categories() {
   */
 
   useEffect(() => {
-    if (isFirstSearchEffect.current) {
-      isFirstSearchEffect.current = false;
-      return;
-    }
-
     const timer = window.setTimeout(() => {
       loadCategories(1);
     }, 400);
@@ -560,7 +524,6 @@ export default function Categories() {
       {/* ================================================================
           HEADER
       ================================================================ */}
-
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
@@ -591,19 +554,15 @@ export default function Categories() {
       {/* ================================================================
           SUCCESS MESSAGE
       ================================================================ */}
-
-      {successMessage && (
-        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-sm">
-          <CheckCircleIcon className="h-5 w-5 shrink-0" />
-
-          <span>{successMessage}</span>
-        </div>
-      )}
+      <SuccessMessage
+        message={successMessage}
+        onClose={() => setSuccessMessage("")}
+        title="Category Saved"
+      />
 
       {/* ================================================================
           ERROR MESSAGE
       ================================================================ */}
-
       {error && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
           <div className="flex items-center gap-3">
@@ -626,7 +585,6 @@ export default function Categories() {
       {/* ================================================================
           CONTENT
       ================================================================ */}
-
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {/* ============================================================
             SEARCH
@@ -890,13 +848,16 @@ export default function Categories() {
       ================================================================ */}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]">
-          <div className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-white/20 bg-white shadow-2xl">
             {/* HEADER */}
 
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <div className="relative flex shrink-0 items-center justify-between overflow-hidden bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-5 py-5 text-white sm:px-6">
+              <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-white/10" />
+              <div className="pointer-events-none absolute -bottom-16 left-20 h-28 w-28 rounded-full bg-fuchsia-400/10" />
+
+              <div className="relative flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-white shadow-lg backdrop-blur-sm">
                   {editingCategory ? (
                     <EditIcon className="h-5 w-5" />
                   ) : (
@@ -905,11 +866,11 @@ export default function Categories() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">
+                  <h2 className="text-lg font-bold tracking-tight">
                     {editingCategory ? "Edit Category" : "Add Category"}
                   </h2>
 
-                  <p className="mt-0.5 text-xs text-slate-500">
+                  <p className="mt-0.5 text-xs text-indigo-100">
                     {editingCategory
                       ? "Update category information."
                       : "Create a new product category."}
@@ -921,7 +882,7 @@ export default function Categories() {
                 type="button"
                 onClick={closeModal}
                 disabled={saving}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+                className="relative rounded-xl p-2 text-white/80 transition hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Close modal"
               >
                 <CloseIcon className="h-5 w-5" />
@@ -934,19 +895,37 @@ export default function Categories() {
               onSubmit={handleSubmit}
               className="flex min-h-0 flex-1 flex-col"
             >
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/70">
                 <div className="space-y-6 p-5 sm:p-6">
                   {/* CATEGORY INFORMATION */}
 
-                  <div>
-                    <div className="mb-4">
-                      <h3 className="text-sm font-bold text-slate-900">
-                        Category Information
-                      </h3>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                        <svg
+                          className="h-5 w-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4 6.5A2.5 2.5 0 0 1 6.5 4h3A2.5 2.5 0 0 1 12 6.5v3A2.5 2.5 0 0 1 9.5 12h-3A2.5 2.5 0 0 1 4 9.5v-3ZM12 14.5a2.5 2.5 0 0 1 2.5-2.5h3a2.5 2.5 0 0 1 2.5 2.5v3a2.5 2.5 0 0 1-2.5 2.5h-3a2.5 2.5 0 0 1-2.5-2.5v-3Z"
+                          />
+                        </svg>
+                      </div>
 
-                      <p className="mt-1 text-xs text-slate-500">
-                        Enter the basic information for this product category.
-                      </p>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">
+                          Category Information
+                        </h3>
+
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          Enter the basic information for this product category.
+                        </p>
+                      </div>
                     </div>
 
                     <div className="space-y-5">
@@ -957,17 +936,19 @@ export default function Categories() {
                           Category Name <span className="text-red-500">*</span>
                         </label>
 
-                        <input
-                          type="text"
-                          value={formData.name}
-                          onChange={(event) =>
-                            updateForm("name", event.target.value)
-                          }
-                          disabled={saving}
-                          required
-                          placeholder="e.g. Beverages"
-                          className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:bg-slate-50"
-                        />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(event) =>
+                              updateForm("name", event.target.value)
+                            }
+                            disabled={saving}
+                            required
+                            placeholder="e.g. Beverages"
+                            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:bg-slate-50"
+                          />
+                        </div>
                       </div>
 
                       {/* DESCRIPTION */}
@@ -985,7 +966,7 @@ export default function Categories() {
                           disabled={saving}
                           rows={4}
                           placeholder="Optional category description..."
-                          className="w-full resize-none rounded-xl border border-slate-300 p-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:bg-slate-50"
+                          className="w-full resize-none rounded-xl border border-slate-300 bg-white p-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:bg-slate-50"
                         />
                       </div>
                     </div>
@@ -1000,7 +981,7 @@ export default function Categories() {
                   type="button"
                   onClick={closeModal}
                   disabled={saving}
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1008,7 +989,7 @@ export default function Categories() {
                 <button
                   type="submit"
                   disabled={saving || !formData.name.trim()}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-5 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 transition hover:from-indigo-700 hover:via-violet-700 hover:to-purple-700 hover:shadow-lg hover:shadow-indigo-500/25 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving
                     ? "Saving..."
