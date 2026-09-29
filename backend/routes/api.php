@@ -272,6 +272,11 @@ Route::middleware('auth:sanctum')->group(function () {
         );
 
         Route::get(
+            '/inventory/print',
+            [InventoryController::class, 'print']
+        );
+
+        Route::get(
             '/inventory/{product}',
             [InventoryController::class, 'show']
         );

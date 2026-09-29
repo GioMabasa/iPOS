@@ -27,6 +27,7 @@ import Expenses from "../pages/Expenses";
 import ApprovalRequests from "../pages/ApprovalRequests";
 
 import BirSettings from "../pages/BirSettings";
+import PrinterTest from "../pages/PrinterTest";
 
 export default function AppRoutes() {
   const { user, loading } = useAuth();
@@ -88,6 +89,7 @@ export default function AppRoutes() {
         <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
           <Route path="/settings" element={<Settings />} />
           <Route path="/bir-settings" element={<BirSettings />} />
+          <Route path="/printer-test" element={<PrinterTest />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

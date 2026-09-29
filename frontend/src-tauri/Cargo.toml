@@ -25,4 +25,5 @@ tauri = { version = "2.11.6", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+tauri-plugin-printer = "2.0.3"
 

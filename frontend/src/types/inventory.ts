@@ -34,6 +34,12 @@ export interface InventoryResponse {
   summary: InventorySummary;
 }
 
+export interface InventoryPrintResponse {
+  data: InventoryProduct[];
+  total: number;
+  summary: InventorySummary;
+}
+
 export interface GetInventoryParams {
   page?: number;
   per_page?: number;

@@ -67,9 +67,7 @@ class InventoryExport implements
         $products = $this->productQuery
             ->clone()
             ->with('suppliers')
-            ->lazy(
-                $this->batchSize
-            );
+            ->cursor();
 
         $productBatch = collect();
 

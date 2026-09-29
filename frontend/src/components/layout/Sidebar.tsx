@@ -123,6 +123,11 @@ const menuGroups: MenuGroup[] = [
         path: "/settings",
         roles: ["admin"],
       },
+      {
+        label: "Printer Test",
+        path: "/printer-test",
+        roles: ["admin"],
+      },
     ],
   },
 ];
@@ -410,6 +415,8 @@ function getMenuIcon(label: string) {
       return <ReportsIcon />;
     case "System Settings":
       return <SettingsIcon />;
+    case "Printer Test":
+      return <SettingsIcon />;
     default:
       return <DashboardIcon />;
   }
@@ -447,6 +454,8 @@ function getIconStyle(label: string) {
       return "bg-blue-50 text-blue-600";
     case "System Settings":
       return "bg-indigo-100 text-indigo-600";
+    case "Printer Test":
+      return "bg-slate-100 text-slate-600";
     default:
       return "bg-slate-100 text-slate-600";
   }

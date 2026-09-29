@@ -2,18 +2,22 @@ import type { InventoryResponse } from "../../types/inventory";
 
 interface InventoryHeaderProps {
   exportLoading: boolean;
+  printLoading: boolean;
   loading: boolean;
   currentPage: number;
 
   handleExport: () => void | Promise<void>;
+  handlePrintInventory: () => void | Promise<void>;
   loadInventory: (page?: number) => Promise<InventoryResponse | null>;
 }
 
 export default function InventoryHeader({
   exportLoading,
+  printLoading,
   loading,
   currentPage,
   handleExport,
+  handlePrintInventory,
   loadInventory,
 }: InventoryHeaderProps) {
   return (
@@ -82,6 +86,50 @@ export default function InventoryHeader({
           </svg>
 
           {exportLoading ? "Exporting..." : "Export Inventory to Spreadsheet"}
+        </button>
+
+        <button
+          type="button"
+          onClick={handlePrintInventory}
+          disabled={printLoading}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="h-4 w-4"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6.75 9V4.5h10.5V9"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18.75h12v-6H6v6Z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6.75 16.5h10.5"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M18.75 9h.75a1.5 1.5 0 0 1 1.5 1.5v3.75h-3"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5.25 9h-.75A1.5 1.5 0 0 0 3 10.5v3.75h3"
+            />
+          </svg>
+
+          {printLoading ? "Preparing..." : "Print Inventory"}
         </button>
 
         <button

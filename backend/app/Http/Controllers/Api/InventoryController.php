@@ -17,6 +17,55 @@ use App\Models\Purchase;
 
 class InventoryController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Shared Inventory Product Query
+    |--------------------------------------------------------------------------
+    |
+    | This is the shared source for:
+    | - Inventory page
+    | - Inventory export
+    | - Future inventory print
+    |
+    | Search, product status, supplier, and ordering are kept in one place
+    | so these outputs use the same product filtering logic.
+    |
+    */
+
+    private function buildInventoryProductQuery(
+        string $search,
+        string $productStatus,
+        ?int $supplierId
+    ) {
+        $productQuery = Product::query()
+            ->with('suppliers')
+            ->orderBy('name')
+            ->orderBy('id');
+
+        if ($search !== '') {
+            $productQuery->where(function ($query) use ($search) {
+                $query
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%");
+            });
+        }
+
+        if ($productStatus === 'active') {
+            $productQuery->where('is_active', true);
+        } elseif ($productStatus === 'inactive') {
+            $productQuery->where('is_active', false);
+        }
+
+        if ($supplierId !== null) {
+            $productQuery->whereHas('suppliers', function ($query) use ($supplierId) {
+                $query->where('suppliers.id', $supplierId);
+            });
+        }
+
+        return $productQuery;
+    }
+
     public function index(
         Request $request,
         InventoryService $inventoryService,
@@ -66,35 +115,16 @@ class InventoryController extends Controller
         | Get Products
         |--------------------------------------------------------------------------
         |
-        | Search, supplier, and product status are database-level filters.
-        | This prevents unnecessary products from being loaded.
+        | Search, supplier, product status, and ordering are handled by the
+        | shared inventory product query.
         |
         */
 
-        $productQuery = Product::query()
-            ->with('suppliers')
-            ->orderBy('name');
-
-        if ($search !== '') {
-            $productQuery->where(function ($query) use ($search) {
-                $query
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('sku', 'like', "%{$search}%")
-                    ->orWhere('barcode', 'like', "%{$search}%");
-            });
-        }
-
-        if ($productStatus === 'active') {
-            $productQuery->where('is_active', true);
-        } elseif ($productStatus === 'inactive') {
-            $productQuery->where('is_active', false);
-        }
-
-        if ($supplierId !== null) {
-            $productQuery->whereHas('suppliers', function ($query) use ($supplierId) {
-                $query->where('suppliers.id', $supplierId);
-            });
-        }
+        $productQuery = $this->buildInventoryProductQuery(
+            $search,
+            $productStatus,
+            $supplierId
+        );
 
         $products = $productQuery->get();
 
@@ -131,7 +161,7 @@ class InventoryController extends Controller
         | Calculate Inventory Data
         |--------------------------------------------------------------------------
         |
-        | InventoryCalculationService is now the shared source of truth
+        | InventoryCalculationService is the shared source of truth
         | for stock, FIFO cost, stock value, and low-stock calculation.
         |
         */
@@ -230,11 +260,159 @@ class InventoryController extends Controller
         ]);
     }
 
+
     /*
-|--------------------------------------------------------------------------
-| Export Inventory
-|--------------------------------------------------------------------------
-*/
+    |--------------------------------------------------------------------------
+    | Print Inventory
+    |--------------------------------------------------------------------------
+    |
+    | Dedicated endpoint for Inventory A4 printing.
+    |
+    | Uses the same inventory product query and inventory calculation logic
+    | as the Inventory page and Export.
+    |
+    | Important:
+    | - No arbitrary per_page=10000
+    | - No XLSX/CSV conversion
+    | - Same search/filter logic
+    | - Same InventoryCalculationService
+    | - Returns the complete filtered inventory dataset
+    |
+    */
+
+    public function print(
+        Request $request,
+        InventoryCalculationService $inventoryCalculationService
+    ): JsonResponse {
+        $validated = $request->validate([
+            'search' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'stock_filter' => [
+                'nullable',
+                'in:all,in_stock,low_stock,out_of_stock',
+            ],
+            'product_status' => [
+                'nullable',
+                'in:all,active,inactive',
+            ],
+            'supplier_id' => [
+                'nullable',
+                'integer',
+                'exists:suppliers,id',
+            ],
+        ]);
+
+        $search = trim($validated['search'] ?? '');
+        $stockFilter = $validated['stock_filter'] ?? 'all';
+        $productStatus = $validated['product_status'] ?? 'all';
+        $supplierId = $validated['supplier_id'] ?? null;
+
+        /*
+    |--------------------------------------------------------------------------
+    | Shared Product Query
+    |--------------------------------------------------------------------------
+    */
+
+        $productQuery = $this->buildInventoryProductQuery(
+            $search,
+            $productStatus,
+            $supplierId
+        );
+
+        $products = $productQuery->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Calculate Inventory
+    |--------------------------------------------------------------------------
+    */
+
+        $data = $inventoryCalculationService
+            ->calculate($products);
+
+        /*
+    |--------------------------------------------------------------------------
+    | Apply Stock Filter
+    |--------------------------------------------------------------------------
+    */
+
+        $data = $data->filter(function (array $product) use (
+            $stockFilter
+        ) {
+            $stock = (float) $product['stock'];
+
+            return match ($stockFilter) {
+                'in_stock' =>
+                $stock > 0 &&
+                    !$product['is_low_stock'],
+
+                'low_stock' =>
+                $product['is_low_stock'] &&
+                    $stock > 0,
+
+                'out_of_stock' =>
+                $stock <= 0,
+
+                default =>
+                true,
+            };
+        })->values();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Summary
+    |--------------------------------------------------------------------------
+    */
+
+        $badOrders = InventoryTransaction::query()
+            ->where('type', 'bad_order')
+            ->sum('quantity');
+
+        $adjustments = InventoryTransaction::query()
+            ->where('type', 'adjustment')
+            ->count();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Response
+    |--------------------------------------------------------------------------
+    */
+
+        return response()->json([
+            'data' => $data,
+
+            'total' => $data->count(),
+
+            'summary' => [
+                'total_products' => $data->count(),
+
+                'total_stock' => $data->sum('stock'),
+
+                'low_stock' => $data
+                    ->where('is_low_stock', true)
+                    ->count(),
+
+                'out_of_stock' => $data
+                    ->where('stock', '<=', 0)
+                    ->count(),
+
+                'bad_orders' => (float) $badOrders,
+
+                'adjustments' => $adjustments,
+            ],
+        ]);
+    }
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export Inventory
+    |--------------------------------------------------------------------------
+    */
 
     public function export(
         Request $request,
@@ -272,42 +450,25 @@ class InventoryController extends Controller
         $format = $validated['format'] ?? 'xlsx';
 
         /*
-    |--------------------------------------------------------------------------
-    | Product Query
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Product Query
+        |--------------------------------------------------------------------------
+        |
+        | Uses the same shared query as the Inventory page.
+        |
+        */
 
-        $productQuery = Product::query()
-            ->with('suppliers')
-            ->orderBy('name')
-            ->orderBy('id');
-
-        if ($search !== '') {
-            $productQuery->where(function ($query) use ($search) {
-                $query
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('sku', 'like', "%{$search}%")
-                    ->orWhere('barcode', 'like', "%{$search}%");
-            });
-        }
-
-        if ($productStatus === 'active') {
-            $productQuery->where('is_active', true);
-        } elseif ($productStatus === 'inactive') {
-            $productQuery->where('is_active', false);
-        }
-
-        if ($supplierId !== null) {
-            $productQuery->whereHas('suppliers', function ($query) use ($supplierId) {
-                $query->where('suppliers.id', $supplierId);
-            });
-        }
+        $productQuery = $this->buildInventoryProductQuery(
+            $search,
+            $productStatus,
+            $supplierId
+        );
 
         /*
-    |--------------------------------------------------------------------------
-    | Supplier Label
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Supplier Label
+        |--------------------------------------------------------------------------
+        */
 
         $supplierLabel = 'All Suppliers';
 
@@ -320,14 +481,14 @@ class InventoryController extends Controller
         }
 
         /*
-    |--------------------------------------------------------------------------
-    | CSV Export
-    |--------------------------------------------------------------------------
-    |
-    | CSV is intentionally streamed so large exports do not require
-    | the complete dataset to remain in memory.
-    |
-    */
+        |--------------------------------------------------------------------------
+        | CSV Export
+        |--------------------------------------------------------------------------
+        |
+        | CSV is intentionally streamed so large exports do not require
+        | the complete dataset to remain in memory.
+        |
+        */
 
         if ($format === 'csv') {
             $fileName = 'inventory-' . now()->format('Y-m-d') . '.csv';
@@ -345,21 +506,21 @@ class InventoryController extends Controller
                     }
 
                     /*
-                |--------------------------------------------------------------------------
-                | UTF-8 BOM
-                |--------------------------------------------------------------------------
-                |
-                | Helps Microsoft Excel correctly detect UTF-8 CSV files.
-                |
-                */
+                    |--------------------------------------------------------------------------
+                    | UTF-8 BOM
+                    |--------------------------------------------------------------------------
+                    |
+                    | Helps Microsoft Excel correctly detect UTF-8 CSV files.
+                    |
+                    */
 
                     fwrite($handle, "\xEF\xBB\xBF");
 
                     /*
-                |--------------------------------------------------------------------------
-                | CSV Headings
-                |--------------------------------------------------------------------------
-                */
+                    |--------------------------------------------------------------------------
+                    | CSV Headings
+                    |--------------------------------------------------------------------------
+                    */
 
                     fputcsv($handle, [
                         'Product',
@@ -377,17 +538,17 @@ class InventoryController extends Controller
                     ]);
 
                     /*
-                |--------------------------------------------------------------------------
-                | Batch Processing
-                |--------------------------------------------------------------------------
-                */
+                    |--------------------------------------------------------------------------
+                    | Batch Processing
+                    |--------------------------------------------------------------------------
+                    */
 
                     $batchSize = 500;
 
                     $products = $productQuery
                         ->clone()
                         ->with('suppliers')
-                        ->lazy($batchSize);
+                        ->cursor();
 
                     $productBatch = collect();
 
@@ -459,10 +620,10 @@ class InventoryController extends Controller
                     }
 
                     /*
-                |--------------------------------------------------------------------------
-                | Remaining Batch
-                |--------------------------------------------------------------------------
-                */
+                    |--------------------------------------------------------------------------
+                    | Remaining Batch
+                    |--------------------------------------------------------------------------
+                    */
 
                     if ($productBatch->isNotEmpty()) {
                         $inventoryData = $inventoryCalculationService
@@ -536,13 +697,13 @@ class InventoryController extends Controller
         }
 
         /*
-    |--------------------------------------------------------------------------
-    | XLSX Export Preflight
-    |--------------------------------------------------------------------------
-    |
-    | Only the standard XLSX export is subject to the product threshold.
-    |
-    */
+        |--------------------------------------------------------------------------
+        | XLSX Export Preflight
+        |--------------------------------------------------------------------------
+        |
+        | Only the standard XLSX export is subject to the product threshold.
+        |
+        */
 
         $exportProductCount = (clone $productQuery)->count();
 
@@ -563,13 +724,13 @@ class InventoryController extends Controller
         }
 
         /*
-    |--------------------------------------------------------------------------
-    | XLSX Export
-    |--------------------------------------------------------------------------
-    |
-    | Existing XLSX export behavior remains unchanged.
-    |
-    */
+        |--------------------------------------------------------------------------
+        | XLSX Export
+        |--------------------------------------------------------------------------
+        |
+        | Existing XLSX export behavior remains unchanged.
+        |
+        */
 
         return Excel::download(
             new InventoryExport(

@@ -164,6 +164,26 @@ export async function getInventoryHistory(
 
 /*
 |--------------------------------------------------------------------------
+| Print Inventory
+|--------------------------------------------------------------------------
+*/
+
+export async function printInventory(
+  params: GetInventoryParams = {},
+): Promise<InventoryResponse> {
+  const response =
+    await api.get<InventoryResponse>(
+      "/inventory/print",
+      {
+        params,
+      },
+    );
+
+  return response.data;
+}
+
+/*
+|--------------------------------------------------------------------------
 | Adjust Inventory
 |--------------------------------------------------------------------------
 */
