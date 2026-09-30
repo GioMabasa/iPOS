@@ -31,7 +31,11 @@ class InventoryAdjustmentController extends Controller
                 'numeric',
                 'not_in:0',
             ],
-
+            'unit_cost' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
             'notes' => [
                 'nullable',
                 'string',
@@ -44,6 +48,21 @@ class InventoryAdjustmentController extends Controller
         );
 
         $quantity = (float) $validated['quantity'];
+
+        $unitCost = null;
+
+        if (
+            $validated['type'] === 'adjustment' &&
+            $quantity > 0
+        ) {
+            if (!array_key_exists('unit_cost', $validated)) {
+                return response()->json([
+                    'message' => 'Unit cost is required when increasing stock.',
+                ], 422);
+            }
+
+            $unitCost = (float) $validated['unit_cost'];
+        }
 
         /*
          * Bad Order always removes stock.
@@ -78,7 +97,8 @@ class InventoryAdjustmentController extends Controller
             $quantity,
             $userId,
             $validated['notes'] ?? null,
-            $validated['type']
+            $validated['type'],
+            $unitCost
         );
 
         return response()->json([

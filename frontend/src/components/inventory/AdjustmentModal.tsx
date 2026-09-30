@@ -53,6 +53,18 @@ export default function AdjustmentModal({
 
   formatQuantity,
 }: AdjustmentModalProps) {
+  const quantityValue = Number(adjustmentQuantity);
+
+  const isQuantityValid =
+    adjustmentQuantity.trim() !== "" &&
+    Number.isFinite(quantityValue) &&
+    quantityValue > 0;
+
+  const isFormValid =
+    Boolean(adjustmentProduct) &&
+    Boolean(adjustmentType) &&
+    Boolean(adjustmentDirection) &&
+    isQuantityValid;
   if (!open) {
     return null;
   }
@@ -586,7 +598,7 @@ export default function AdjustmentModal({
           <button
             type="button"
             onClick={handleAdjustmentSubmit}
-            disabled={adjustmentLoading || !adjustmentProduct}
+            disabled={adjustmentLoading || !isFormValid}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:from-indigo-700 hover:to-violet-700 hover:shadow-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {adjustmentLoading && (

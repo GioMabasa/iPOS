@@ -2,33 +2,25 @@ import type { InventoryProduct } from "../../types/inventory";
 
 interface InventoryTableProps {
   inventory: InventoryProduct[];
-
   loading: boolean;
-
   total: number;
   from: number | null;
   to: number | null;
-
   currentPage: number;
   lastPage: number;
-
-  goToPage: (page: number) => void;
-
-  openProductDetails: (product: InventoryProduct) => void;
-  openAdjustmentModal: (product: InventoryProduct) => void;
-
   formatQuantity: (value: string | number) => string;
   formatCurrency: (value: string | number) => string;
-
   getStockStatus: (product: InventoryProduct) => {
     label: string;
     className: string;
   };
-
   getProductStatus: (product: InventoryProduct) => {
     label: string;
     className: string;
   };
+  openProductDetails: (product: InventoryProduct) => void;
+  openAdjustmentModal: (product: InventoryProduct) => void;
+  goToPage: (page: number) => void;
 }
 
 export default function InventoryTable({
@@ -39,13 +31,13 @@ export default function InventoryTable({
   to,
   currentPage,
   lastPage,
-  goToPage,
-  openProductDetails,
-  openAdjustmentModal,
   formatQuantity,
   formatCurrency,
   getStockStatus,
   getProductStatus,
+  openProductDetails,
+  openAdjustmentModal,
+  goToPage,
 }: InventoryTableProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -91,7 +83,6 @@ export default function InventoryTable({
                 strokeLinejoin="round"
                 d="m4.5 7.5 7.5-4.125L19.5 7.5 12 11.625 4.5 7.5Z"
               />
-
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -162,7 +153,7 @@ export default function InventoryTable({
                 </th>
 
                 <th className="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Adjust
+                  Action
                 </th>
               </tr>
             </thead>
@@ -175,16 +166,8 @@ export default function InventoryTable({
                 return (
                   <tr
                     key={product.product_id}
-                    tabIndex={0}
-                    role="button"
                     onClick={() => openProductDetails(product)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openProductDetails(product);
-                      }
-                    }}
-                    className="group cursor-pointer transition hover:bg-slate-50/70 focus:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-200"
+                    className="group cursor-pointer transition hover:bg-slate-50/70"
                   >
                     <td className="px-4 py-4">
                       <div className="font-semibold text-slate-800">
@@ -248,31 +231,33 @@ export default function InventoryTable({
                       </span>
                     </td>
 
-                    <td
-                      className="px-4 py-4 text-center"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => openAdjustmentModal(product)}
-                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          className="h-3.5 w-3.5"
+                    <td className="px-4 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openAdjustmentModal(product);
+                          }}
+                          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 5v14M5 12h14"
-                          />
-                        </svg>
-                        Adjust
-                      </button>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            className="h-3.5 w-3.5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 5v14M5 12h14"
+                            />
+                          </svg>
+                          Adjust
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

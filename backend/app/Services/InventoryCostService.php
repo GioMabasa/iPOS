@@ -30,7 +30,16 @@ class InventoryCostService
 
             $transactions = InventoryTransaction::query()
                 ->where('product_id', $saleItem->product_id)
-                ->where('type', 'purchase')
+                ->where(function ($query) {
+                    $query
+                        ->where('type', 'purchase')
+                        ->orWhere(function ($query) {
+                            $query
+                                ->where('type', 'adjustment')
+                                ->where('quantity', '>', 0)
+                                ->whereNotNull('unit_cost');
+                        });
+                })
                 ->orderBy('created_at')
                 ->orderBy('id')
                 ->lockForUpdate()

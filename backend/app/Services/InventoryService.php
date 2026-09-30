@@ -108,14 +108,16 @@ class InventoryService
         float $quantity,
         ?int $userId,
         ?string $notes = null,
-        string $type = 'adjustment'
+        string $type = 'adjustment',
+        ?float $unitCost = null
     ): InventoryTransaction {
         return DB::transaction(function () use (
             $product,
             $quantity,
             $userId,
             $notes,
-            $type
+            $type,
+            $unitCost
         ) {
             if (!in_array($type, ['adjustment', 'bad_order'])) {
                 throw new RuntimeException(
@@ -145,7 +147,9 @@ class InventoryService
                 'product_id' => $product->id,
                 'type' => $type,
                 'quantity' => $quantity,
-                'unit_cost' => null,
+                'unit_cost' => $quantity > 0
+                    ? $unitCost
+                    : null,
                 'reference_type' => $type === 'bad_order'
                     ? 'bad_order'
                     : 'manual_adjustment',

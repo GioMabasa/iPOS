@@ -1531,6 +1531,7 @@ export default function POS() {
         formatDate={formatDate}
         onClose={closePaymentModal}
         onCompleteSale={handleCompleteSale}
+        error={error}
         onClearError={() => setError("")}
       />
     </div>

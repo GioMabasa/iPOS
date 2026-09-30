@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "npm run build -- --mode deployment"
   },
   "app": {
     "windows": [
@@ -33,8 +33,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": [
+      "resources/php",
+      "resources/backend"
+    ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }
   }
+
+
 }

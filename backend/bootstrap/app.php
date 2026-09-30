@@ -5,7 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__ . '/../routes/web.php',
         api: __DIR__ . '/../routes/api.php',
@@ -27,4 +27,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn(Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
-    })->create();
+    })
+    ->create();
+
+$environmentPath = getenv('IPOS_ENVIRONMENT_PATH');
+
+if ($environmentPath !== false && $environmentPath !== '') {
+    $app->useEnvironmentPath($environmentPath);
+}
+
+return $app->useStoragePath(
+    getenv('IPOS_STORAGE_PATH')
+        ?: dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage'
+);

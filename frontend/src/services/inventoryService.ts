@@ -192,6 +192,7 @@ export async function adjustInventory(data: {
   product_id: number;
   type: "adjustment" | "bad_order";
   quantity: number;
+  unit_cost?: number;
   notes?: string;
 }) {
   const response = await api.post("/inventory/adjust", data);

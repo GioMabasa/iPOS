@@ -53,6 +53,7 @@ interface POSPaymentModalProps {
 
   onClose: () => void;
   onCompleteSale: () => void;
+  error: string;
   onClearError: () => void;
 }
 
@@ -106,6 +107,7 @@ export default function POSPaymentModal({
 
   onClose,
   onCompleteSale,
+  error,
   onClearError,
 }: POSPaymentModalProps) {
   if (!showPaymentModal) {
