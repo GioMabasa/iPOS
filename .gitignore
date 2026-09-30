@@ -48,3 +48,7 @@ desktop.ini
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+
+# iPOS deployment artifacts
+/deployment/
+/frontend/src-tauri/resources/
