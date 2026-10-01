@@ -1,18 +1,19 @@
-import type { Supplier } from "../../types/supplier";
-
-type StockFilter = "all" | "in_stock" | "low_stock" | "out_of_stock";
-
-type ProductStatusFilter = "all" | "active" | "inactive";
+interface Supplier {
+  id: number | string;
+  name: string;
+}
 
 interface InventoryFiltersProps {
   search: string;
   setSearch: (value: string) => void;
 
-  stockFilter: StockFilter;
-  setStockFilter: (value: StockFilter) => void;
+  stockFilter: "all" | "in_stock" | "low_stock" | "out_of_stock";
+  setStockFilter: (
+    value: "all" | "in_stock" | "low_stock" | "out_of_stock",
+  ) => void;
 
-  productStatusFilter: ProductStatusFilter;
-  setProductStatusFilter: (value: ProductStatusFilter) => void;
+  productStatusFilter: "all" | "active" | "inactive";
+  setProductStatusFilter: (value: "all" | "active" | "inactive") => void;
 
   supplierFilter: string;
   setSupplierFilter: (value: string) => void;
@@ -39,7 +40,7 @@ export default function InventoryFilters({
     productStatusFilter !== "active" ||
     supplierFilter;
 
-  const clearFilters = () => {
+  const handleClearFilters = () => {
     setSearch("");
     setStockFilter("all");
     setProductStatusFilter("active");
@@ -107,7 +108,15 @@ export default function InventoryFilters({
 
         <select
           value={stockFilter}
-          onChange={(e) => setStockFilter(e.target.value as StockFilter)}
+          onChange={(e) =>
+            setStockFilter(
+              e.target.value as
+                | "all"
+                | "in_stock"
+                | "low_stock"
+                | "out_of_stock",
+            )
+          }
           className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
         >
           <option value="all">All Stock</option>
@@ -119,7 +128,9 @@ export default function InventoryFilters({
         <select
           value={productStatusFilter}
           onChange={(e) =>
-            setProductStatusFilter(e.target.value as ProductStatusFilter)
+            setProductStatusFilter(
+              e.target.value as "all" | "active" | "inactive",
+            )
           }
           className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
         >
@@ -150,7 +161,7 @@ export default function InventoryFilters({
         <div className="mt-3 flex justify-end">
           <button
             type="button"
-            onClick={clearFilters}
+            onClick={handleClearFilters}
             className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
           >
             <svg

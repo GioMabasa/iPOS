@@ -9,11 +9,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Exports\ProductsExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Services\InventoryCalculationService;
 
 class ProductController extends Controller
 {
-    public function index(Request $request): JsonResponse
-    {
+    public function index(
+        Request $request,
+        InventoryCalculationService $inventoryCalculationService
+    ): JsonResponse {
         $validated = $request->validate([
             'search' => [
                 'nullable',
@@ -88,8 +91,39 @@ class ProductController extends Controller
             )
             ->withQueryString();
 
+        /*
+     * Calculate current stock using the same shared inventory
+     * calculation used by the Inventory page.
+     */
+        $inventoryData = $inventoryCalculationService
+            ->calculate($products->getCollection());
+
+        /*
+     * Attach calculated stock to each Product model.
+     *
+     * This keeps the existing Products API response structure
+     * while adding the stock field expected by ProductTable.
+     */
+        $inventoryByProduct = $inventoryData->keyBy('product_id');
+
+        $products->getCollection()->transform(
+            function (Product $product) use ($inventoryByProduct) {
+                $inventory = $inventoryByProduct->get($product->id);
+
+                $product->setAttribute(
+                    'stock',
+                    $inventory
+                        ? (float) $inventory['stock']
+                        : 0.0
+                );
+
+                return $product;
+            }
+        );
+
         return response()->json($products);
     }
+
 
     public function export(Request $request)
     {
@@ -125,6 +159,20 @@ class ProductController extends Controller
             ),
             'products-' . now()->format('Y-m-d-His') . '.xlsx'
         );
+    }
+
+    private function generateInternalBarcode(): string
+    {
+        do {
+            $barcode = '2' . str_pad(
+                (string) random_int(0, 99999999999),
+                11,
+                '0',
+                STR_PAD_LEFT
+            );
+        } while (Product::where('barcode', $barcode)->exists());
+
+        return $barcode;
     }
 
     public function store(Request $request): JsonResponse
@@ -190,6 +238,13 @@ class ProductController extends Controller
          */
         if (Auth::user()?->role === 'cashier') {
             $validated['is_active'] = false;
+        }
+
+        if (
+            !isset($validated['barcode']) ||
+            trim((string) $validated['barcode']) === ''
+        ) {
+            $validated['barcode'] = $this->generateInternalBarcode();
         }
 
         $product = Product::create($validated);

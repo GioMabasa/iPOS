@@ -313,53 +313,71 @@ export default function ProductDetailsModal({
                     </thead>
 
                     <tbody className="divide-y divide-slate-100">
-                      {transactions.map((transaction) => (
-                        <tr
-                          key={transaction.id}
-                          className="transition hover:bg-slate-50/70"
-                        >
-                          <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
-                            {formatDate(transaction.created_at)}
-                          </td>
+                      {transactions.map((transaction) => {
+                        const quantity = Number(transaction.quantity);
 
-                          <td className="px-4 py-3.5 text-center">
-                            <span
-                              className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getTransactionClass(
-                                transaction.type,
-                              )}`}
-                            >
-                              {getTransactionLabel(transaction.type)}
-                            </span>
-                          </td>
+                        const displayQuantity =
+                          transaction.type === "bad_order"
+                            ? -Math.abs(quantity)
+                            : quantity;
 
-                          <td
-                            className={`px-4 py-3.5 text-right font-semibold ${
-                              Number(transaction.quantity) < 0
-                                ? "text-red-600"
-                                : "text-emerald-600"
-                            }`}
+                        const quantityText =
+                          displayQuantity > 0
+                            ? `+${formatQuantity(Math.abs(displayQuantity))}`
+                            : displayQuantity < 0
+                              ? `-${formatQuantity(Math.abs(displayQuantity))}`
+                              : "0";
+
+                        const quantityClass =
+                          displayQuantity > 0
+                            ? "text-emerald-600"
+                            : displayQuantity < 0
+                              ? "text-red-600"
+                              : "text-slate-500";
+
+                        return (
+                          <tr
+                            key={transaction.id}
+                            className="transition hover:bg-slate-50/70"
                           >
-                            {Number(transaction.quantity) > 0 ? "+" : ""}
-                            {formatQuantity(transaction.quantity)}
-                          </td>
+                            <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
+                              {formatDate(transaction.created_at)}
+                            </td>
 
-                          <td className="px-4 py-3.5 text-right text-slate-600">
-                            {transaction.unit_cost == null
-                              ? "—"
-                              : formatCurrency(transaction.unit_cost)}
-                          </td>
+                            <td className="px-4 py-3.5 text-center">
+                              <span
+                                className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getTransactionClass(
+                                  transaction.type,
+                                )}`}
+                              >
+                                {getTransactionLabel(transaction.type)}
+                              </span>
+                            </td>
 
-                          <td className="px-4 py-3.5 text-slate-600">
-                            {formatReference(transaction)}
-                          </td>
+                            <td
+                              className={`px-4 py-3.5 text-right font-semibold ${quantityClass}`}
+                            >
+                              {quantityText}
+                            </td>
 
-                          <td className="max-w-[300px] px-4 py-3.5 text-slate-600">
-                            <span className="block truncate">
-                              {transaction.notes || "—"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                            <td className="px-4 py-3.5 text-right text-slate-600">
+                              {transaction.unit_cost == null
+                                ? "—"
+                                : formatCurrency(transaction.unit_cost)}
+                            </td>
+
+                            <td className="px-4 py-3.5 text-slate-600">
+                              {formatReference(transaction)}
+                            </td>
+
+                            <td className="max-w-[300px] px-4 py-3.5 text-slate-600">
+                              <span className="block truncate">
+                                {transaction.notes || "—"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

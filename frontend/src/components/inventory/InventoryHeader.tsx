@@ -1,24 +1,19 @@
-import type { InventoryResponse } from "../../types/inventory";
-
 interface InventoryHeaderProps {
-  exportLoading: boolean;
-  printLoading: boolean;
   loading: boolean;
-  currentPage: number;
-
-  handleExport: () => void | Promise<void>;
-  handlePrintInventory: () => void | Promise<void>;
-  loadInventory: (page?: number) => Promise<InventoryResponse | null>;
+  printLoading: boolean;
+  exportLoading: boolean;
+  onPrint: () => void;
+  onExport: () => void;
+  onRefresh: () => void;
 }
 
 export default function InventoryHeader({
-  exportLoading,
-  printLoading,
   loading,
-  currentPage,
-  handleExport,
-  handlePrintInventory,
-  loadInventory,
+  printLoading,
+  exportLoading,
+  onPrint,
+  onExport,
+  onRefresh,
 }: InventoryHeaderProps) {
   return (
     <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -61,7 +56,36 @@ export default function InventoryHeader({
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
-          onClick={handleExport}
+          onClick={onPrint}
+          disabled={printLoading || loading}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="h-4 w-4"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6.75 3.75h10.5A2.25 2.25 0 0 1 19.5 6v12a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 18V6a2.25 2.25 0 0 1 2.25-2.25Z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M8 8.25h8M8 12h8M8 15.75h5"
+            />
+          </svg>
+
+          {printLoading ? "Printing..." : "Print Inventory"}
+        </button>
+
+        <button
+          type="button"
+          onClick={onExport}
           disabled={exportLoading}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -90,51 +114,7 @@ export default function InventoryHeader({
 
         <button
           type="button"
-          onClick={handlePrintInventory}
-          disabled={printLoading}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            className="h-4 w-4"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6.75 9V4.5h10.5V9"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6 18.75h12v-6H6v6Z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6.75 16.5h10.5"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M18.75 9h.75a1.5 1.5 0 0 1 1.5 1.5v3.75h-3"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5.25 9h-.75A1.5 1.5 0 0 0 3 10.5v3.75h3"
-            />
-          </svg>
-
-          {printLoading ? "Preparing..." : "Print Inventory"}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => loadInventory(currentPage)}
+          onClick={onRefresh}
           disabled={loading}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
         >

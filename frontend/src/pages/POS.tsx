@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
 import POSProductCatalog from "../components/pos/POSProductCatalog";
 
@@ -7,13 +8,15 @@ import { createSale } from "../services/saleService";
 import { getCustomers } from "../services/customerService";
 import { getSettings } from "../services/settingService";
 import { getBirSettings } from "../services/birSettingService";
-import { printReceipt } from "../services/receiptService";
+
+import POSWorkspace from "../components/pos/POSWorkspace";
 
 import type { CreateSaleRequest } from "../types/sale";
 import type { Customer } from "../types/customer";
 import type { TaxType } from "../types/birSetting";
 
 import POSPaymentModal from "../components/pos/POSPaymentModal";
+import ErrorMessage from "../components/ErrorMessage";
 
 /*
 |--------------------------------------------------------------------------
@@ -139,6 +142,14 @@ export default function POS() {
 
   /*
   |--------------------------------------------------------------------------
+  | Preserve Scanner Error
+  |--------------------------------------------------------------------------
+  */
+
+  const preserveScannerErrorRef = useRef(false);
+
+  /*
+  |--------------------------------------------------------------------------
   | Confirmation Modal
   |--------------------------------------------------------------------------
   */
@@ -154,6 +165,21 @@ export default function POS() {
   */
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Cash Change Modal
+  |--------------------------------------------------------------------------
+  */
+
+  const [showChangeModal, setShowChangeModal] = useState(false);
+
+  const [changeModalData, setChangeModalData] = useState({
+    subtotal: 0,
+    total: 0,
+    cashReceived: 0,
+    change: 0,
+  });
 
   const [amountPaid, setAmountPaid] = useState("0");
 
@@ -191,6 +217,12 @@ export default function POS() {
 
   const [vatRate, setVatRate] = useState("12");
 
+  /*
+  |--------------------------------------------------------------------------
+  | Payment Input Focus
+  |--------------------------------------------------------------------------
+  */
+
   useEffect(() => {
     if (showPaymentModal) {
       setTimeout(() => {
@@ -214,6 +246,36 @@ export default function POS() {
 
   /*
   |--------------------------------------------------------------------------
+  | Error Close Handler
+  |--------------------------------------------------------------------------
+  */
+
+  const handleErrorClose = useCallback(() => {
+    setError("");
+  }, []);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Escape Key - Close POS Error
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    function handleEscapeKey(event: KeyboardEvent) {
+      if (event.key === "Escape" && error) {
+        handleErrorClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleEscapeKey);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [error, handleErrorClose]);
+
+  /*
+  |--------------------------------------------------------------------------
   | Load POS Products
   |--------------------------------------------------------------------------
   */
@@ -230,7 +292,13 @@ export default function POS() {
         setFetching(true);
       }
 
-      setError("");
+      const preserveScannerError = preserveScannerErrorRef.current;
+
+      preserveScannerErrorRef.current = false;
+
+      if (!preserveScannerError) {
+        setError("");
+      }
 
       const response = await getPOSProducts({
         page,
@@ -432,16 +500,18 @@ export default function POS() {
   |--------------------------------------------------------------------------
   */
 
-  function addToCart(product: POSProduct) {
+  function addToCart(product: POSProduct): boolean {
     const availableStock = toNumber(product.stock);
 
     if (availableStock <= 0) {
       setError(`${product.name} is out of stock.`);
 
-      return;
+      return false;
     }
 
     setError("");
+
+    let added = true;
 
     setCart((currentCart) => {
       const existing = currentCart.find(
@@ -450,7 +520,9 @@ export default function POS() {
 
       if (existing) {
         if (existing.quantity >= availableStock) {
-          setError(`Maximum stock reached for ${product.name}.`);
+          setError(`Maximum stock reached for ${product.name}`);
+
+          added = false;
 
           return currentCart;
         }
@@ -473,6 +545,8 @@ export default function POS() {
         },
       ];
     });
+
+    return added;
   }
 
   /*
@@ -488,15 +562,9 @@ export default function POS() {
       return;
     }
 
+    setError("");
+
     try {
-      setError("");
-
-      /*
-      |--------------------------------------------------------------------------
-      | Search Barcode Through POS API
-      |--------------------------------------------------------------------------
-      */
-
       const response = await getPOSProducts({
         page: 1,
         per_page: PRODUCTS_PER_PAGE,
@@ -508,7 +576,19 @@ export default function POS() {
       );
 
       if (product) {
-        addToCart(product);
+        const added = addToCart(product);
+
+        if (!added) {
+          preserveScannerErrorRef.current = true;
+
+          setSearch("");
+
+          setCurrentPage(1);
+
+          focusSearchInput();
+
+          return;
+        }
 
         setSearch("");
 
@@ -524,12 +604,6 @@ export default function POS() {
 
         return;
       }
-
-      /*
-      |--------------------------------------------------------------------------
-      | If No Barcode Match
-      |--------------------------------------------------------------------------
-      */
 
       setError(`Barcode "${scannedValue}" was not found.`);
 
@@ -760,6 +834,63 @@ export default function POS() {
 
   /*
   |--------------------------------------------------------------------------
+  | Escape Key - Close Payment Modal
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    function handleEscapeKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      if (showPaymentModal) {
+        closePaymentModal();
+      }
+    }
+
+    window.addEventListener("keydown", handleEscapeKey);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [showPaymentModal, submitting, taxType, vatRate]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Close Change Modal
+  |--------------------------------------------------------------------------
+  */
+
+  function closeChangeModal() {
+    // Close change modal
+    setShowChangeModal(false);
+
+    // Make sure payment modal/register flow is closed
+    setShowPaymentModal(false);
+
+    // Reset payment state for the next transaction
+    setPaymentMethod("cash");
+    setAmountPaid("0");
+    setDiscount("0");
+    setTax("0");
+    setNotes("");
+    setSelectedCustomerId(null);
+    setTermMonths(1);
+
+    // Clear success message after a short delay
+    setSuccessMessage("Sale completed successfully!");
+
+    setTimeout(() => {
+      setSuccessMessage("");
+    }, 4000);
+
+    // Ready for the next barcode scan
+    focusSearchInput();
+  }
+
+  /*
+  |--------------------------------------------------------------------------
   | Complete Sale
   |--------------------------------------------------------------------------
   */
@@ -815,7 +946,6 @@ export default function POS() {
 
         items: cart.map((item) => ({
           product_id: item.product.product_id,
-
           quantity: item.quantity,
         })),
       };
@@ -824,21 +954,126 @@ export default function POS() {
 
       console.log("Sale completed:", response);
 
-      try {
-        await printReceipt(response.data, {
-          width: "80mm",
-          businessName,
-          businessAddress,
+      const sale = response.data;
+
+      /*
+      |--------------------------------------------------------------------------
+      | Save Completed Sale Values
+      |--------------------------------------------------------------------------
+      |
+      | These values must be saved before clearing the cart/payment fields.
+      | The Change Modal must use the actual saved sale values from Laravel.
+      |
+      */
+
+      if (paymentMethod === "cash") {
+        setChangeModalData({
+          subtotal: Number(sale.subtotal),
+          total: Number(sale.total),
+          cashReceived: Number(sale.amount_paid),
+          change: Number(sale.change_amount),
         });
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Native Tauri Thermal Receipt
+      |--------------------------------------------------------------------------
+      |
+      | Receipt is printed directly through the Windows RAW printer
+      | spooler using the Generic / Text Only printer.
+      |
+      */
+
+      try {
+        await invoke("print_thermal_receipt", {
+          receipt: {
+            business_name: businessName || "iPOS",
+
+            business_address: businessAddress || "",
+
+            receipt_number: sale.invoice_number,
+
+            date: sale.sale_date,
+
+            cashier: sale.user?.name || "Cashier",
+
+            items: sale.items.map((item) => ({
+              name: item.product?.name || `Product #${item.product_id}`,
+
+              qty: Number(item.quantity),
+
+              price: Number(item.unit_price),
+            })),
+
+            subtotal: Number(sale.subtotal),
+
+            discount: Number(sale.discount),
+
+            tax: Number(sale.tax),
+
+            total: Number(sale.total),
+
+            payment_type: sale.payment_method,
+
+            cash_received:
+              sale.payment_method === "cash" ? Number(sale.amount_paid) : null,
+
+            change:
+              sale.payment_method === "cash"
+                ? Number(sale.change_amount)
+                : null,
+
+            customer_name:
+              sale.customer?.name || defaultCustomer || "Walk-in Customer",
+
+            term_months:
+              sale.payment_method === "charge" ? sale.term_months : null,
+
+            due_date: sale.payment_method === "charge" ? sale.due_date : null,
+          },
+        });
+
+        console.log("Native thermal receipt printed successfully.");
       } catch (printError) {
-        console.error("Receipt printing error:", printError);
+        console.error("Native thermal receipt error:", printError);
 
         setSuccessMessage(
           "Sale completed successfully, but the receipt could not be printed.",
         );
       }
 
+      /*
+      |--------------------------------------------------------------------------
+      | Cash Drawer
+      |--------------------------------------------------------------------------
+      |
+      | Only CASH payments open the drawer.
+      | CHARGE payments do not open the drawer.
+      |
+      */
+
+      if (paymentMethod === "cash") {
+        try {
+          const drawerResult = await invoke<string>("open_cash_drawer");
+
+          console.log("Cash drawer result:", drawerResult);
+        } catch (drawerError) {
+          console.error("Cash drawer error:", drawerError);
+
+          setSuccessMessage(
+            "Sale completed successfully, but the cash drawer could not be opened.",
+          );
+        }
+      }
+
       window.dispatchEvent(new Event("ipos:sale-completed"));
+
+      /*
+      |--------------------------------------------------------------------------
+      | Reset Payment / Cart
+      |--------------------------------------------------------------------------
+      */
 
       setShowPaymentModal(false);
 
@@ -852,13 +1087,36 @@ export default function POS() {
 
       setNotes("");
 
-      setPaymentMethod("cash");
-
       setSelectedCustomerId(null);
 
       setTermMonths(null);
 
-      setSuccessMessage("Sale completed successfully!");
+      /*
+      |--------------------------------------------------------------------------
+      | Cash Change Modal
+      |--------------------------------------------------------------------------
+      |
+      | For CASH:
+      |   Receipt → Drawer → Change Modal
+      |
+      | For CHARGE:
+      |   Receipt → Complete → Search focus
+      |
+      */
+
+      if (paymentMethod === "cash") {
+        setShowChangeModal(true);
+      } else {
+        setPaymentMethod("cash");
+
+        setSuccessMessage("Sale completed successfully!");
+
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 4000);
+
+        focusSearchInput();
+      }
 
       /*
       |--------------------------------------------------------------------------
@@ -868,11 +1126,13 @@ export default function POS() {
 
       await loadInventory(currentPage, search);
 
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 4000);
+      if (paymentMethod === "charge") {
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 4000);
 
-      focusSearchInput();
+        focusSearchInput();
+      }
     } catch (err: any) {
       console.error("Sale creation error:", err);
 
@@ -961,7 +1221,7 @@ export default function POS() {
                 <path
                   className="opacity-90"
                   fill="currentColor"
-                  d="M21 12a9 9 0 0 0-9-9v3a6 6 0 0 1 6 6h3Z"
+                  d="M21 12a9 9 0 0 1-9 9v-3a6 6 0 0 0 6-6h3Z"
                 />
               </svg>
             </div>
@@ -1020,8 +1280,8 @@ export default function POS() {
           </div>
         </div>
 
-        <div className="hidden items-center gap-2 rounded-xl p-3 bg-indigo-500 text-white shadow-sm border  px-3 py-2 shadow-sm sm:flex">
-          <kbd className="rounded-md bg-indigo-700 px-2 py-1 text-xs  font-bold text-white">
+        <div className="hidden items-center gap-2 rounded-xl border bg-indigo-500 px-3 py-2 p-3 text-white shadow-sm sm:flex">
+          <kbd className="rounded-md bg-indigo-700 px-2 py-1 text-xs font-bold text-white">
             F4
           </kbd>
 
@@ -1059,360 +1319,50 @@ export default function POS() {
           ERROR
       ======================================================== */}
 
-      {error && (
-        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-100">
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 8v4m0 4h.01M10.3 3.8 2.9 17a2 2 0 0 0 1.75 3h14.7a2 2 0 0 0 1.75 3L13.7 3.8a2 2 0 0 0-3.4 0Z"
-                />
-              </svg>
-            </div>
-
-            <span>{error}</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setError("")}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg text-red-400 transition hover:bg-red-100 hover:text-red-600"
-            aria-label="Dismiss error"
-          >
-            ×
-          </button>
-        </div>
-      )}
+      <ErrorMessage
+        message={error || null}
+        onClose={handleErrorClose}
+        title="POS Error"
+        duration={5000}
+      />
 
       {/* ========================================================
           POS LAYOUT
       ======================================================== */}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
-        {/* ======================================================
-            PRODUCTS
-        ====================================================== */}
-
-        <POSProductCatalog
-          products={products}
-          search={search}
-          currentPage={currentPage}
-          lastPage={lastPage}
-          fetching={fetching}
-          productsPerPage={PRODUCTS_PER_PAGE}
-          searchInputRef={searchInputRef}
-          onSearchChange={setSearch}
-          onBarcodeScan={handleBarcodeScan}
-          onAddToCart={addToCart}
-          getCartQuantity={getCartQuantity}
-          onPreviousPage={handlePreviousProductPage}
-          onNextPage={handleNextProductPage}
-          toNumber={toNumber}
-          formatCurrency={formatCurrency}
-        />
-
-        {/* ======================================================
-            CART
-        ====================================================== */}
-
-        <section className="flex h-[calc(100vh-220px)] min-h-[560px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          {/* CART HEADER */}
-
-          <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <svg
-                  className="h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 4h2l2 11h10l2-8H6m3 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm9 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"
-                  />
-                </svg>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-bold text-gray-900">
-                  Current Sale
-                </h2>
-
-                <p className="mt-0.5 text-xs text-gray-400">
-                  {cart.length} product
-                  {cart.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-            </div>
-
-            {cart.length > 0 && (
-              <button
-                type="button"
-                onClick={() =>
-                  setConfirmState({
-                    type: "clear",
-                  })
-                }
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-50 hover:text-red-700"
-              >
-                <svg
-                  className="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 6h18M9 6V4h6v2m-8 0 1 14h8l1-14"
-                  />
-                </svg>
-                Clear
-              </button>
-            )}
-          </div>
-
-          {/* CART ITEMS */}
-
-          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-            {cart.length === 0 ? (
-              <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
-                  <svg
-                    className="h-8 w-8"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 4h2l2 11h10l2-8H6m3 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm9 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"
-                    />
-                  </svg>
-                </div>
-
-                <p className="mt-4 text-sm font-semibold text-gray-700">
-                  Cart is empty
-                </p>
-
-                <p className="mt-1 max-w-[220px] text-xs leading-5 text-gray-400">
-                  Scan a barcode or select a product to add it to the sale.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {cart.map((item) => {
-                  const availableStock = toNumber(item.product.stock);
-
-                  const remaining = Math.max(availableStock - item.quantity, 0);
-
-                  const lineTotal =
-                    toNumber(item.product.selling_price) * item.quantity;
-
-                  return (
-                    <div
-                      key={item.product.product_id}
-                      className="rounded-2xl border border-gray-200 bg-white p-3.5 transition hover:border-blue-100 hover:shadow-sm"
-                    >
-                      {/* ITEM HEADER */}
-
-                      <div className="flex gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-xs font-bold text-blue-600">
-                          {item.product.name.charAt(0).toUpperCase()}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-bold text-gray-900">
-                                {item.product.name}
-                              </p>
-
-                              <p className="mt-1 truncate text-[11px] text-gray-400">
-                                SKU: {item.product.sku}
-                              </p>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setConfirmState({
-                                  type: "remove",
-                                  productId: item.product.product_id,
-                                })
-                              }
-                              className="shrink-0 rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                              aria-label={`Remove ${item.product.name}`}
-                            >
-                              <svg
-                                className="h-4 w-4"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M6 6l12 12M18 6 6 18"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-
-                          <p className="mt-1 text-[11px] text-gray-400">
-                            {formatCurrency(item.product.selling_price)} each
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* QUANTITY */}
-
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <div className="flex items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                          {/* DECREASE */}
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateQuantity(
-                                item.product.product_id,
-                                item.quantity - 1,
-                              )
-                            }
-                            className="flex h-9 w-9 items-center justify-center text-lg font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-900"
-                            aria-label="Decrease quantity"
-                          >
-                            −
-                          </button>
-
-                          {/* INPUT */}
-
-                          <input
-                            type="number"
-                            min="1"
-                            max={availableStock}
-                            value={item.quantity}
-                            onChange={(event) => {
-                              const value = event.target.value;
-
-                              if (value === "") {
-                                return;
-                              }
-
-                              updateQuantity(
-                                item.product.product_id,
-                                Number(value),
-                              );
-                            }}
-                            onFocus={(event) => event.target.select()}
-                            className="h-9 w-12 border-x border-gray-200 bg-white text-center text-sm font-bold text-gray-900 outline-none"
-                          />
-
-                          {/* INCREASE */}
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateQuantity(
-                                item.product.product_id,
-                                item.quantity + 1,
-                              )
-                            }
-                            disabled={item.quantity >= availableStock}
-                            className="flex h-9 w-9 items-center justify-center text-lg font-medium text-gray-500 transition hover:bg-gray-200 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
-                            aria-label="Increase quantity"
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        <p className="text-sm font-bold text-gray-900">
-                          {formatCurrency(lineTotal)}
-                        </p>
-                      </div>
-
-                      {/* REMAINING */}
-
-                      <div className="mt-2 flex items-center justify-between text-[11px]">
-                        <span className="text-gray-400">Remaining stock</span>
-
-                        <span
-                          className={`font-semibold ${
-                            remaining === 0 ? "text-red-600" : "text-gray-600"
-                          }`}
-                        >
-                          {remaining}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* TOTAL */}
-
-          <div className="shrink-0 border-t border-gray-100 bg-gray-50/70 p-4 sm:p-5">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-gray-500">
-                <span>Subtotal</span>
-
-                <span className="font-medium text-gray-700">
-                  {formatCurrency(subtotal)}
-                </span>
-              </div>
-
-              <div className="flex items-end justify-between border-t border-gray-200 pt-3">
-                <span className="text-sm font-semibold text-gray-600">
-                  Total
-                </span>
-
-                <span className="text-2xl font-bold tracking-tight text-gray-900">
-                  {formatCurrency(total)}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={openPaymentModal}
-              disabled={cart.length === 0}
-              className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
-            >
-              Proceed to Payment
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 12h14m-6-6 6 6-6 6"
-                />
-              </svg>
-            </button>
-          </div>
-        </section>
-      </div>
+      <POSWorkspace
+        products={products}
+        search={search}
+        currentPage={currentPage}
+        lastPage={lastPage}
+        fetching={fetching}
+        productsPerPage={PRODUCTS_PER_PAGE}
+        searchInputRef={searchInputRef}
+        cart={cart}
+        subtotal={subtotal}
+        total={total}
+        onSearchChange={setSearch}
+        onBarcodeScan={handleBarcodeScan}
+        onAddToCart={addToCart}
+        getCartQuantity={getCartQuantity}
+        onPreviousPage={handlePreviousProductPage}
+        onNextPage={handleNextProductPage}
+        updateQuantity={updateQuantity}
+        onClearCart={() =>
+          setConfirmState({
+            type: "clear",
+          })
+        }
+        onRemoveItem={(productId) =>
+          setConfirmState({
+            type: "remove",
+            productId,
+          })
+        }
+        onProceedToPayment={openPaymentModal}
+        toNumber={toNumber}
+        formatCurrency={formatCurrency}
+      />
 
       {/* ========================================================
           CONFIRMATION MODAL
@@ -1490,6 +1440,127 @@ export default function POS() {
       )}
 
       {/* ========================================================
+          CASH CHANGE MODAL
+      ======================================================== */}
+
+      {showChangeModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            {/* HEADER */}
+
+            <div className="bg-green-600 px-6 py-5 text-white">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20">
+                  <svg
+                    className="h-6 w-6"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m5 12 4 4L19 6"
+                    />
+                  </svg>
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-bold">Payment Successful</h2>
+
+                  <p className="text-sm text-green-100">
+                    Cash sale completed successfully.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* BODY */}
+
+            <div className="p-6">
+              <div className="space-y-4">
+                {/* SUBTOTAL */}
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-500">
+                    Subtotal
+                  </span>
+
+                  <span className="text-lg font-bold text-gray-900">
+                    {formatCurrency(changeModalData.subtotal)}
+                  </span>
+                </div>
+
+                {/* TOTAL */}
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-500">
+                    Total
+                  </span>
+
+                  <span className="text-lg font-bold text-gray-900">
+                    {formatCurrency(changeModalData.total)}
+                  </span>
+                </div>
+
+                {/* CASH RECEIVED */}
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-500">
+                    Cash Received
+                  </span>
+
+                  <span className="text-lg font-bold text-gray-900">
+                    {formatCurrency(changeModalData.cashReceived)}
+                  </span>
+                </div>
+
+                <div className="my-4 border-t border-gray-200" />
+
+                {/* CHANGE */}
+
+                <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
+                  <p className="text-center text-sm font-semibold text-green-700">
+                    CHANGE
+                  </p>
+
+                  <p className="mt-1 text-center text-4xl font-extrabold tracking-tight text-green-700">
+                    {formatCurrency(changeModalData.change)}
+                  </p>
+                </div>
+
+                {/* GUIDE */}
+
+                <div className="rounded-xl bg-gray-50 px-4 py-3 text-center">
+                  <p className="text-sm font-medium text-gray-700">
+                    Please give the customer the change shown above.
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    Cash drawer command has been sent to the printer.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* FOOTER */}
+
+            <div className="flex justify-end border-t border-gray-100 bg-gray-50/70 px-6 py-4">
+              <button
+                type="button"
+                onClick={closeChangeModal}
+                autoFocus
+                className="inline-flex h-11 min-w-[120px] items-center justify-center rounded-xl bg-green-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
           PAYMENT MODAL
       ======================================================== */}
 
@@ -1532,7 +1603,7 @@ export default function POS() {
         onClose={closePaymentModal}
         onCompleteSale={handleCompleteSale}
         error={error}
-        onClearError={() => setError("")}
+        onClearError={handleErrorClose}
       />
     </div>
   );

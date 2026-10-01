@@ -904,17 +904,205 @@ class InventoryController extends Controller
                 'required',
                 'in:bad_order,adjustment',
             ],
+
+            'page' => [
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+
+            'per_page' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100',
+            ],
+
+            'period' => [
+                'nullable',
+                'in:all,today,yesterday,this_week,this_month,custom',
+            ],
+
+            'date_from' => [
+                'nullable',
+                'date',
+            ],
+
+            'date_to' => [
+                'nullable',
+                'date',
+                'after_or_equal:date_from',
+            ],
+
+            'search' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'direction' => [
+                'nullable',
+                'in:all,increase,decrease',
+            ],
         ]);
 
-        $transactions = InventoryTransaction::query()
+        $page = $validated['page'] ?? 1;
+        $perPage = $validated['per_page'] ?? 20;
+
+        $type = $validated['type'];
+
+        $period = $validated['period'] ?? 'today';
+
+        $search = trim(
+            $validated['search'] ?? ''
+        );
+
+        $direction = $validated['direction'] ?? 'all';
+
+        $query = InventoryTransaction::query()
             ->with('product')
-            ->where('type', $validated['type'])
-            ->latest('id')
-            ->paginate(20);
+            ->where('type', $type);
 
-        return response()->json([
-            'data' => $transactions,
-        ]);
+        /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
+
+        if ($search !== '') {
+            $query->where(function ($query) use ($search) {
+                $query
+                    ->where('notes', 'like', "%{$search}%")
+                    ->orWhereHas('product', function ($productQuery) use ($search) {
+                        $productQuery
+                            ->where('name', 'like', "%{$search}%")
+                            ->orWhere('sku', 'like', "%{$search}%")
+                            ->orWhere('barcode', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Direction
+    |--------------------------------------------------------------------------
+    |
+    | Direction applies only to manual adjustments.
+    |
+    */
+
+        if (
+            $type === 'adjustment' &&
+            $direction !== 'all'
+        ) {
+            if ($direction === 'increase') {
+                $query->where('quantity', '>', 0);
+            }
+
+            if ($direction === 'decrease') {
+                $query->where('quantity', '<', 0);
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Period / Date Filter
+    |--------------------------------------------------------------------------
+    */
+
+        if ($period !== 'all') {
+            $dateFrom = null;
+            $dateTo = null;
+
+            switch ($period) {
+                case 'today':
+                    $dateFrom = now('Asia/Manila')
+                        ->startOfDay()
+                        ->utc();
+
+                    $dateTo = now('Asia/Manila')
+                        ->endOfDay()
+                        ->utc();
+                    break;
+
+                case 'yesterday':
+                    $dateFrom = now('Asia/Manila')
+                        ->subDay()
+                        ->startOfDay()
+                        ->utc();
+
+                    $dateTo = now('Asia/Manila')
+                        ->subDay()
+                        ->endOfDay()
+                        ->utc();
+                    break;
+
+                case 'this_week':
+                    $dateFrom = now('Asia/Manila')
+                        ->startOfWeek()
+                        ->utc();
+
+                    $dateTo = now('Asia/Manila')
+                        ->endOfDay()
+                        ->utc();
+                    break;
+
+                case 'this_month':
+                    $dateFrom = now('Asia/Manila')
+                        ->startOfMonth()
+                        ->utc();
+
+                    $dateTo = now('Asia/Manila')
+                        ->endOfDay()
+                        ->utc();
+                    break;
+
+                case 'custom':
+                    if (!empty($validated['date_from'])) {
+                        $dateFrom = \Carbon\Carbon::parse(
+                            $validated['date_from'],
+                            'Asia/Manila'
+                        )
+                            ->startOfDay()
+                            ->utc();
+                    }
+
+                    if (!empty($validated['date_to'])) {
+                        $dateTo = \Carbon\Carbon::parse(
+                            $validated['date_to'],
+                            'Asia/Manila'
+                        )
+                            ->endOfDay()
+                            ->utc();
+                    }
+                    break;
+            }
+
+            if ($dateFrom) {
+                $query->where('created_at', '>=', $dateFrom);
+            }
+
+            if ($dateTo) {
+                $query->where('created_at', '<=', $dateTo);
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------
+    */
+
+        $transactions = $query
+            ->latest('id')
+            ->paginate(
+                $perPage,
+                ['*'],
+                'page',
+                $page
+            );
+
+        return response()->json($transactions);
     }
 
     public function transactions(

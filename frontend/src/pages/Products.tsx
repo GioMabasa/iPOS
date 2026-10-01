@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   getProducts,
@@ -14,6 +14,7 @@ import type { Category } from "../types/category";
 
 import ProductForm from "../components/products/ProductForm";
 import ProductDetails from "../components/products/ProductDetails";
+import BarcodePrint from "../components/products/BarcodePrint";
 import ProductHeader from "../components/products/ProductHeader";
 import ProductFilters from "../components/products/ProductFilters";
 import ProductTable from "../components/products/ProductTable";
@@ -47,8 +48,14 @@ export default function Products() {
 
   const [showDetails, setShowDetails] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [barcodeProduct, setBarcodeProduct] = useState<Product | null>(null);
 
   const [exporting, setExporting] = useState(false);
+
+  /*
+   * Barcode scanner / search input ref.
+   */
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   async function loadProducts(page: number = 1) {
     try {
@@ -127,6 +134,48 @@ export default function Products() {
     setStatusFilter("");
   }
 
+  /*
+   * Barcode Scanner
+   *
+   * USB barcode scanners normally type the barcode into the
+   * focused input and finish with Enter.
+   *
+   * When Enter is detected, the current search value is treated
+   * as the scanned barcode.
+   */
+  function handleBarcodeScan(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    const scannedBarcode = search.trim();
+
+    if (!scannedBarcode) {
+      return;
+    }
+
+    event.preventDefault();
+
+    /*
+     * Clear the Search box first.
+     */
+    setSearch("");
+
+    /*
+     * Put the scanned barcode back temporarily so the existing
+     * product search can use it.
+     */
+    setSearch(scannedBarcode);
+
+    /*
+     * Select the search text so the next scan replaces it.
+     */
+    window.setTimeout(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    }, 0);
+  }
+
   async function handleExportProducts() {
     try {
       setExporting(true);
@@ -159,6 +208,15 @@ export default function Products() {
     } finally {
       setExporting(false);
     }
+  }
+
+  function handlePrintBarcode(product: Product) {
+    if (!product.barcode) {
+      setError("This product does not have a barcode.");
+      return;
+    }
+
+    setBarcodeProduct(product);
   }
 
   function handleAddProduct() {
@@ -412,6 +470,7 @@ export default function Products() {
         handleAddProduct={handleAddProduct}
         handleToggleProductStatus={handleToggleProductStatus}
         clearFilters={clearFilters}
+        printBarcode={handlePrintBarcode}
       />
 
       <ProductForm
@@ -426,6 +485,13 @@ export default function Products() {
         product={selectedProduct}
         onClose={handleCloseDetails}
       />
+
+      {barcodeProduct && (
+        <BarcodePrint
+          product={barcodeProduct}
+          onClose={() => setBarcodeProduct(null)}
+        />
+      )}
     </div>
   );
 }

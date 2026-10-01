@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { Category } from "../../types/category";
 
 interface ProductFiltersProps {
@@ -21,8 +22,31 @@ export default function ProductFilters({
   onStatusChange,
   onClear,
 }: ProductFiltersProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const hasFilters =
     search !== "" || categoryFilter !== "" || statusFilter !== "";
+
+  // Focus search automatically when Products page loads
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const handleSearchKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+
+    // Select the entire current value.
+    // The next USB scanner input will replace it.
+    event.currentTarget.select();
+  };
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -42,9 +66,11 @@ export default function ProductFilters({
           </svg>
 
           <input
+            ref={searchInputRef}
             type="search"
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
+            onKeyDown={handleSearchKeyDown}
             placeholder="Search name, SKU or barcode..."
             className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-10 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
           />
@@ -52,10 +78,30 @@ export default function ProductFilters({
           {search && (
             <button
               type="button"
-              onClick={() => onSearchChange("")}
+              onClick={() => {
+                onSearchChange("");
+
+                requestAnimationFrame(() => {
+                  searchInputRef.current?.focus();
+                });
+              }}
               className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-200 hover:text-gray-600"
               aria-label="Clear search"
-            ></button>
+            >
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 6l12 12M18 6 6 18"
+                />
+              </svg>
+            </button>
           )}
         </div>
 

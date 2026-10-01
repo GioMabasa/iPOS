@@ -143,24 +143,53 @@ export async function getProductTransactions(
 | Get Inventory History
 |--------------------------------------------------------------------------
 */
+export interface InventoryHistoryFilters {
+  period:
+    | "all"
+    | "today"
+    | "yesterday"
+    | "this_week"
+    | "this_month"
+    | "custom";
 
-export async function getInventoryHistory(
+  date_from?: string;
+  date_to?: string;
+
+  search?: string;
+
+  direction?:
+    | "all"
+    | "increase"
+    | "decrease";
+}
+
+export const getInventoryHistory = (
   type: "bad_order" | "adjustment",
   page: number = 1,
-): Promise<InventoryHistoryResponse> {
-  const response =
-    await api.get<InventoryHistoryResponse>(
-      "/inventory/history",
-      {
-        params: {
-          type,
-          page,
-        },
-      },
-    );
+  filters?: InventoryHistoryFilters,
+) => {
+  return api.get("/inventory/history", {
+    params: {
+      type,
+      page,
+      per_page: 20,
 
-  return response.data;
-}
+      period: filters?.period ?? "today",
+
+      date_from:
+        filters?.date_from || undefined,
+
+      date_to:
+        filters?.date_to || undefined,
+
+      search:
+        filters?.search?.trim() || undefined,
+
+      direction:
+        filters?.direction ?? "all",
+    },
+  });
+};
 
 /*
 |--------------------------------------------------------------------------

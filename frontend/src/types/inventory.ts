@@ -77,6 +77,10 @@ export interface InventoryTransaction {
   created_by: number | null;
   created_at: string;
   updated_at: string;
+  product?: {
+  name: string;
+  sku: string | null;
+} | null;
 }
 
 export interface InventoryHistoryTransaction

@@ -28,6 +28,7 @@ import ApprovalRequests from "../pages/ApprovalRequests";
 
 import BirSettings from "../pages/BirSettings";
 import PrinterTest from "../pages/PrinterTest";
+import ThermalPrinterTest from "../pages/ThermalPrinterTest";
 
 export default function AppRoutes() {
   const { user, loading } = useAuth();
@@ -90,6 +91,10 @@ export default function AppRoutes() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/bir-settings" element={<BirSettings />} />
           <Route path="/printer-test" element={<PrinterTest />} />
+          <Route
+            path="/thermal-printer-test"
+            element={<ThermalPrinterTest />}
+          />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

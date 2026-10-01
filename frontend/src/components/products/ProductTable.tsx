@@ -26,6 +26,7 @@ interface ProductTableProps {
   handleAddProduct: () => void;
   handleToggleProductStatus: (product: Product) => void;
   clearFilters: () => void;
+  printBarcode: (product: Product) => void;
 }
 
 export default function ProductTable({
@@ -48,6 +49,7 @@ export default function ProductTable({
   handleAddProduct,
   handleToggleProductStatus,
   clearFilters,
+  printBarcode,
 }: ProductTableProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -160,7 +162,7 @@ export default function ProductTable({
                     </th>
 
                     <th className="whitespace-nowrap px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Edit
+                      Action
                     </th>
                   </tr>
                 </thead>
@@ -351,33 +353,60 @@ export default function ProductTable({
                           )}
                         </td>
 
-                        {/* EDIT */}
+                        {/* ACTIONS */}
 
                         <td
                           className="px-5 py-4 text-right"
                           onClick={(event) => event.stopPropagation()}
                         >
                           {canEdit ? (
-                            <button
-                              type="button"
-                              onClick={() => handleEditProduct(product)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:border-blue-200 hover:bg-blue-100"
-                            >
-                              <svg
-                                className="h-3.5 w-3.5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
+                            <div className="flex justify-end gap-2">
+                              {/* EDIT */}
+
+                              <button
+                                type="button"
+                                onClick={() => handleEditProduct(product)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:border-blue-200 hover:bg-blue-100"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="m14 5 5 5M4 20l3.5-.8L19.2 7.5a2.1 2.1 0 0 0-3-3L4.5 16.2 4 20Z"
-                                />
-                              </svg>
-                              Edit
-                            </button>
+                                <svg
+                                  className="h-3.5 w-3.5"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="m14 5 5 5M4 20l3.5-.8L19.2 7.5a2.1 2.1 0 0 0-3-3L4.5 16.2 4 20Z"
+                                  />
+                                </svg>
+                                Edit
+                              </button>
+
+                              {/* PRINT BARCODE */}
+
+                              <button
+                                type="button"
+                                onClick={() => printBarcode(product)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
+                              >
+                                <svg
+                                  className="h-3.5 w-3.5"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M6 9V4h12v5M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v6H6v-6Z"
+                                  />
+                                </svg>
+                                Barcode
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-xs text-gray-400">
                               View only

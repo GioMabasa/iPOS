@@ -15,6 +15,7 @@ import {
   getInventoryHistory,
   exportInventory,
 } from "../services/inventoryService";
+import type { InventoryHistoryFilters } from "../services/inventoryService";
 
 import { getSuppliers } from "../services/supplierService";
 
@@ -23,7 +24,15 @@ import type { Supplier } from "../types/supplier";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 
+import InventoryHeader from "../components/inventory/InventoryHeader";
+import InventoryFilters from "../components/inventory/InventoryFilters";
+import InventorySummaryCards from "../components/inventory/InventorySummaryCards";
 import InventoryTable from "../components/inventory/InventoryTable";
+import InventoryHistoryModal from "../components/inventory/InventoryHistoryModal";
+import ProductDetailsModal from "../components/inventory/ProductDetailsModal";
+import AdjustmentModal from "../components/inventory/AdjustmentModal";
+import SuccessMessage from "../components/SuccessMessage";
+import ErrorMessage from "../components/ErrorMessage";
 
 import { printInventoryList } from "../components/inventory/print/InventoryListPrint";
 
@@ -77,6 +86,9 @@ export default function Inventory() {
   const [transactionPage, setTransactionPage] = useState(1);
   const [transactionLastPage, setTransactionLastPage] = useState(1);
   const [transactionTotal, setTransactionTotal] = useState(0);
+
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   /*
   |--------------------------------------------------------------------------
@@ -185,10 +197,6 @@ export default function Inventory() {
   };
 
   useEffect(() => {
-    loadInventory(1);
-  }, []);
-
-  useEffect(() => {
     const timer = window.setTimeout(() => {
       loadInventory(1);
     }, 400);
@@ -197,6 +205,36 @@ export default function Inventory() {
       window.clearTimeout(timer);
     };
   }, [search, stockFilter, productStatusFilter, supplierFilter]);
+
+  /*
+   * Automatically hide success message.
+   */
+  useEffect(() => {
+    if (!successMessage) return;
+
+    const timer = window.setTimeout(() => {
+      setSuccessMessage(null);
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [successMessage]);
+
+  /*
+   * Automatically hide error message.
+   */
+  useEffect(() => {
+    if (!error) return;
+
+    const timer = window.setTimeout(() => {
+      setError("");
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [error]);
 
   function goToPage(page: number) {
     if (page < 1 || page > lastPage || page === currentPage || loading) {
@@ -261,12 +299,6 @@ export default function Inventory() {
   |--------------------------------------------------------------------------
   */
 
-  /*
-|--------------------------------------------------------------------------
-| Export Inventory
-|--------------------------------------------------------------------------
-*/
-
   const handleExport = async () => {
     let step = "Starting export";
 
@@ -307,7 +339,6 @@ export default function Inventory() {
       });
 
       if (!filePath) {
-        setError("Export cancelled.");
         return;
       }
 
@@ -319,13 +350,13 @@ export default function Inventory() {
 
       await writeFile(filePath, new Uint8Array(arrayBuffer));
 
-      setError(`Export successful: ${filePath}`);
+      setSuccessMessage(`Export successful: ${filePath}`);
     } catch (err) {
       console.error("INVENTORY EXPORT ERROR:", err);
 
       const message = err instanceof Error ? err.message : String(err);
 
-      setError(`Inventory export failed at "${step}": ${message}`);
+      setErrorMessage(`Inventory export failed at "${step}": ${message}`);
     } finally {
       setExportLoading(false);
     }
@@ -382,12 +413,13 @@ export default function Inventory() {
   const loadHistory = async (
     type: "bad_order" | "adjustment",
     page: number = 1,
+    filters?: InventoryHistoryFilters,
   ) => {
     try {
       setHistoryLoading(true);
       setHistoryError("");
 
-      const response = await getInventoryHistory(type, page);
+      const response = await getInventoryHistory(type, page, filters);
 
       setHistoryTransactions(response.data.data ?? []);
       setHistoryPage(response.data.current_page ?? 1);
@@ -409,8 +441,6 @@ export default function Inventory() {
     setHistoryTotal(0);
     setHistoryError("");
     setHistoryModalOpen(true);
-
-    await loadHistory(type, 1);
   };
 
   const closeHistory = () => {
@@ -531,6 +561,7 @@ export default function Inventory() {
   | Save Adjustment
   |--------------------------------------------------------------------------
   */
+
   const adjustmentQuantityValue = Number(adjustmentQuantity);
 
   const isAdjustmentQuantityValid =
@@ -573,7 +604,11 @@ export default function Inventory() {
     const unitCost = Number(adjustmentUnitCost);
 
     if (isIncreasingAdjustment) {
-      if (!Number.isFinite(unitCost) || unitCost < 0) {
+      if (
+        adjustmentUnitCost.trim() === "" ||
+        !Number.isFinite(unitCost) ||
+        unitCost < 0
+      ) {
         setAdjustmentError("Unit cost is required for stock increases.");
         return;
       }
@@ -620,6 +655,13 @@ export default function Inventory() {
           ? -quantity
           : quantity;
 
+      console.log("Adjustment Submit:", {
+        type: adjustmentType,
+        direction: adjustmentDirection,
+        inputQuantity: quantity,
+        finalQuantity,
+      });
+
       await adjustInventory({
         product_id: adjustmentProduct.product_id,
         type: adjustmentType,
@@ -650,6 +692,7 @@ export default function Inventory() {
         }
       }
 
+      setSuccessMessage("Inventory adjustment saved successfully.");
       closeAdjustmentModal();
     } catch (err: any) {
       console.error(err);
@@ -808,502 +851,37 @@ export default function Inventory() {
   return (
     <div className="min-h-full bg-slate-50 p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-5 w-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3.75 6.75A2.25 2.25 0 0 1 6 4.5h12a2.25 2.25 0 0 1 2.25 2.25v10.5A2.25 2.25 0 0 1 18 19.5H6a2.25 2.25 0 0 1-2.25-2.25V6.75Z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M7.5 8.25h9M7.5 12h9M7.5 15.75h5.25"
-                />
-              </svg>
-            </div>
-
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                Inventory Management
-              </h1>
-
-              <p className="mt-0.5 text-sm text-slate-500">
-                Monitor current stock levels and inventory status.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={handlePrintInventory}
-            disabled={printLoading || loading}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6.75 3.75h10.5A2.25 2.25 0 0 1 19.5 6v12a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 18V6a2.25 2.25 0 0 1 2.25-2.25Z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M8 8.25h8M8 12h8M8 15.75h5"
-              />
-            </svg>
-            {printLoading ? "Printing..." : "Print Inventory"}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={exportLoading}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 border border-emerald-200"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 3v12m0 0 4-4m-4 4-4-4"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4.5 15.75v1.5A2.25 2.25 0 0 0 6.75 19.5h10.5a2.25 2.25 0 0 0 2.25-2.25v-1.5"
-              />
-            </svg>
-            {exportLoading ? "Exporting..." : "Export Inventory to Spreadsheet"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => loadInventory(currentPage)}
-            disabled={loading}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M20.25 12a8.25 8.25 0 1 1-2.418-5.832"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M20.25 4.5v5.25H15"
-              />
-            </svg>
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
-      </div>
+      <InventoryHeader
+        loading={loading}
+        printLoading={printLoading}
+        exportLoading={exportLoading}
+        onPrint={handlePrintInventory}
+        onExport={handleExport}
+        onRefresh={() => loadInventory(currentPage)}
+      />
 
       {/* Filters */}
-      <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4.5 6.75h15M7.5 12h9m-6 5.25h3"
-              />
-            </svg>
-          </div>
+      <InventoryFilters
+        search={search}
+        setSearch={setSearch}
+        stockFilter={stockFilter}
+        setStockFilter={setStockFilter}
+        productStatusFilter={productStatusFilter}
+        setProductStatusFilter={setProductStatusFilter}
+        supplierFilter={supplierFilter}
+        setSupplierFilter={setSupplierFilter}
+        suppliers={suppliers}
+        suppliersLoading={suppliersLoading}
+      />
 
-          <div>
-            <p className="text-sm font-semibold text-slate-800">
-              Inventory Filters
-            </p>
-
-            <p className="text-xs text-slate-400">
-              Search and filter your inventory.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div className="relative xl:col-span-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-            >
-              <circle cx="11" cy="11" r="6.75" />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m16 16 4.25 4.25"
-              />
-            </svg>
-
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search product, SKU or barcode..."
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-
-          <select
-            value={stockFilter}
-            onChange={(e) =>
-              setStockFilter(
-                e.target.value as
-                  | "all"
-                  | "in_stock"
-                  | "low_stock"
-                  | "out_of_stock",
-              )
-            }
-            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-          >
-            <option value="all">All Stock</option>
-            <option value="in_stock">In Stock</option>
-            <option value="low_stock">Low Stock</option>
-            <option value="out_of_stock">Out of Stock</option>
-          </select>
-
-          <select
-            value={productStatusFilter}
-            onChange={(e) =>
-              setProductStatusFilter(
-                e.target.value as "all" | "active" | "inactive",
-              )
-            }
-            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="all">All Products</option>
-          </select>
-
-          <select
-            value={supplierFilter}
-            onChange={(e) => setSupplierFilter(e.target.value)}
-            disabled={suppliersLoading}
-            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-          >
-            <option value="">
-              {suppliersLoading ? "Loading Suppliers..." : "All Suppliers"}
-            </option>
-
-            {suppliers.map((supplier) => (
-              <option key={supplier.id} value={supplier.id}>
-                {supplier.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {(search ||
-          stockFilter !== "all" ||
-          productStatusFilter !== "active" ||
-          supplierFilter) && (
-          <div className="mt-3 flex justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                setStockFilter("all");
-                setProductStatusFilter("active");
-                setSupplierFilter("");
-              }}
-              className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-4 w-4"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 6l12 12M18 6 6 18"
-                />
-              </svg>
-              Clear Filters
-            </button>
-          </div>
-        )}
-      </div>
-
-      {error && (
-        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            className="mt-0.5 h-5 w-5 shrink-0"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 3.75 21 19.5H3L12 3.75Z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v4.5M12 16.5h.007"
-            />
-          </svg>
-
-          <span>{error}</span>
-        </div>
-      )}
+      <ErrorMessage message={error} onClose={() => setError("")} />
 
       {/* Summary Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-slate-500">
-                Total Products
-              </p>
-
-              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                {inventorySummary.total_products.toLocaleString("en-PH")}
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-5 w-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M7.5 7.5h9M7.5 12h9M7.5 16.5h5.25"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5.25 3.75h13.5A2.25 2.25 0 0 1 21 6v12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18V6a2.25 2.25 0 0 1 2.25-2.25Z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Total Stock</p>
-
-              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                {formatQuantity(inventorySummary.total_stock)}
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-5 w-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m4.5 7.5 7.5-4.125L19.5 7.5 12 11.625 4.5 7.5Z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m4.5 7.5 7.5 4.125L19.5 7.5M4.5 12l7.5 4.125L19.5 12M4.5 16.5l7.5 4.125 7.5-4.125"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Low Stock</p>
-
-              <p className="mt-2 text-2xl font-bold tracking-tight text-amber-600">
-                {inventorySummary.low_stock.toLocaleString("en-PH")}
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-5 w-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 3.75 21 19.5H3L12 3.75Z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v4.5M12 16.5h.007"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Out of Stock</p>
-
-              <p className="mt-2 text-2xl font-bold tracking-tight text-red-600">
-                {inventorySummary.out_of_stock.toLocaleString("en-PH")}
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-5 w-5"
-              >
-                <circle cx="12" cy="12" r="8.25" />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m9 9 6 6m0-6-6 6"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => openHistory("bad_order")}
-          className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-red-200 hover:bg-red-50/40 hover:shadow-md"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Bad Orders</p>
-
-              <p className="mt-2 text-2xl font-bold tracking-tight text-red-600">
-                {formatQuantity(inventorySummary.bad_orders)}
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-5 w-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6.75 6.75h10.5M8.25 6.75v10.5A2.25 2.25 0 0 0 10.5 19.5h3A2.25 2.25 0 0 0 15.75 17.25V6.75M9.75 6.75V5.25A1.5 1.5 0 0 1 11.25 3.75h1.5a1.5 1.5 0 0 1 1.5 1.5v1.5"
-                />
-              </svg>
-            </div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => openHistory("adjustment")}
-          className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:shadow-md"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Adjustments</p>
-
-              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-700">
-                {inventorySummary.adjustments.toLocaleString("en-PH")}
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-5 w-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 3.75v16.5M3.75 12h16.5"
-                />
-              </svg>
-            </div>
-          </div>
-        </button>
-      </div>
+      <InventorySummaryCards
+        inventorySummary={inventorySummary}
+        formatQuantity={formatQuantity}
+        openHistory={openHistory}
+      />
 
       {/* Inventory Table */}
       <InventoryTable
@@ -1324,1094 +902,73 @@ export default function Inventory() {
       />
 
       {/* Inventory History Modal */}
-      {historyModalOpen && (
-        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                    historyType === "bad_order"
-                      ? "bg-red-50 text-red-600"
-                      : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {historyType === "bad_order" ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      className="h-5 w-5"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 3.75 21 19.5H3L12 3.75Z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 9v4.5M12 16.5h.007"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      className="h-5 w-5"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 3.75v16.5M3.75 12h16.5"
-                      />
-                    </svg>
-                  )}
-                </div>
-
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight text-slate-900">
-                    {historyType === "bad_order"
-                      ? "Bad Order History"
-                      : "Adjustment History"}
-                  </h2>
-
-                  <p className="mt-0.5 text-sm text-slate-500">
-                    {historyType === "bad_order"
-                      ? "Inventory transactions recorded as bad orders."
-                      : "Inventory transactions recorded as manual adjustments."}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeHistory}
-                disabled={historyLoading}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="h-5 w-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 6l12 12M18 6 6 18"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="max-h-[calc(90vh-140px)] overflow-y-auto p-5 sm:p-6">
-              {historyError && (
-                <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="mt-0.5 h-5 w-5 shrink-0"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 3.75 21 19.5H3L12 3.75Z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 9v4.5M12 16.5h.007"
-                    />
-                  </svg>
-
-                  <span>{historyError}</span>
-                </div>
-              )}
-
-              <div className="overflow-hidden rounded-xl border border-slate-200">
-                {historyLoading ? (
-                  <div className="flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
-                    <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
-                    <p className="text-sm font-medium text-slate-600">
-                      Loading history...
-                    </p>
-                  </div>
-                ) : historyTransactions.length === 0 ? (
-                  <div className="flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
-                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        className="h-6 w-6"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M5.25 5.25h13.5A1.25 1.25 0 0 1 20 6.5v11A1.25 1.25 0 0 1 18.75 18.75H5.25A1.25 1.25 0 0 1 4 17.5v-11a1.25 1.25 0 0 1 1.25-1.25Z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M8 9h8M8 12h8M8 15h5"
-                        />
-                      </svg>
-                    </div>
-
-                    <p className="text-sm font-semibold text-slate-700">
-                      No inventory history found
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-[1050px] text-sm">
-                      <thead className="bg-slate-50/80">
-                        <tr className="border-b border-slate-200">
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Date
-                          </th>
-
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Product
-                          </th>
-
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            SKU
-                          </th>
-
-                          <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Type
-                          </th>
-
-                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Qty
-                          </th>
-
-                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Unit Cost
-                          </th>
-
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Reference
-                          </th>
-
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Notes
-                          </th>
-                        </tr>
-                      </thead>
-
-                      <tbody className="divide-y divide-slate-100">
-                        {historyTransactions.map((transaction) => {
-                          const quantity = Number(transaction.quantity);
-
-                          const quantityClass =
-                            historyType === "bad_order"
-                              ? "text-red-600"
-                              : quantity < 0
-                                ? "text-red-600"
-                                : "text-emerald-600";
-
-                          const quantityPrefix =
-                            historyType === "bad_order"
-                              ? "-"
-                              : quantity > 0
-                                ? "+"
-                                : quantity < 0
-                                  ? "-"
-                                  : "";
-
-                          return (
-                            <tr
-                              key={transaction.id}
-                              className="transition hover:bg-slate-50/70"
-                            >
-                              <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
-                                {formatDate(transaction.created_at)}
-                              </td>
-
-                              <td className="px-4 py-3.5">
-                                <div className="font-semibold text-slate-800">
-                                  {transaction.product?.name || "—"}
-                                </div>
-                              </td>
-
-                              <td className="px-4 py-3.5 font-medium text-slate-500">
-                                {transaction.product?.sku || "—"}
-                              </td>
-
-                              <td className="px-4 py-3.5 text-center">
-                                <span
-                                  className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getTransactionClass(
-                                    transaction.type,
-                                  )}`}
-                                >
-                                  {getTransactionLabel(transaction.type)}
-                                </span>
-                              </td>
-
-                              <td
-                                className={`px-4 py-3.5 text-right font-semibold ${quantityClass}`}
-                              >
-                                {quantityPrefix}
-                                {formatQuantity(Math.abs(quantity))}
-                              </td>
-
-                              <td className="px-4 py-3.5 text-right text-slate-600">
-                                {transaction.unit_cost == null
-                                  ? "—"
-                                  : formatCurrency(transaction.unit_cost)}
-                              </td>
-
-                              <td className="px-4 py-3.5 text-slate-600">
-                                {formatReference(transaction)}
-                              </td>
-
-                              <td className="max-w-[280px] px-4 py-3.5 text-slate-600">
-                                <span className="block truncate">
-                                  {transaction.notes || "—"}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* History Pagination */}
-              {!historyLoading && historyLastPage > 1 && (
-                <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm text-slate-500">
-                    {historyTotal} transaction
-                    {historyTotal !== 1 ? "s" : ""}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={historyPage <= 1}
-                      onClick={() => {
-                        if (!historyType) {
-                          return;
-                        }
-
-                        const nextPage = historyPage - 1;
-
-                        setHistoryPage(nextPage);
-
-                        loadHistory(historyType, nextPage);
-                      }}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        className="h-4 w-4"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="m14.5 18-6-6 6-6"
-                        />
-                      </svg>
-                      Previous
-                    </button>
-
-                    <span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600">
-                      Page {historyPage} of {historyLastPage}
-                    </span>
-
-                    <button
-                      type="button"
-                      disabled={historyPage >= historyLastPage}
-                      onClick={() => {
-                        if (!historyType) {
-                          return;
-                        }
-
-                        const nextPage = historyPage + 1;
-
-                        setHistoryPage(nextPage);
-
-                        loadHistory(historyType, nextPage);
-                      }}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Next
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        className="h-4 w-4"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="m9.5 6 6 6-6 6"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end border-t border-slate-200 bg-slate-50/70 px-5 py-4 sm:px-6">
-              <button
-                type="button"
-                onClick={closeHistory}
-                disabled={historyLoading}
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <InventoryHistoryModal
+        historyModalOpen={historyModalOpen}
+        historyType={historyType}
+        historyLoading={historyLoading}
+        historyError={historyError}
+        historyTransactions={historyTransactions}
+        historyPage={historyPage}
+        historyLastPage={historyLastPage}
+        historyTotal={historyTotal}
+        closeHistory={closeHistory}
+        setHistoryPage={setHistoryPage}
+        loadHistory={loadHistory}
+        formatDate={formatDate}
+        formatQuantity={formatQuantity}
+        formatCurrency={formatCurrency}
+        formatReference={formatReference}
+        getTransactionClass={getTransactionClass}
+        getTransactionLabel={getTransactionLabel}
+      />
 
       {/* Product Details / Transaction History Modal */}
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="h-5 w-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.5 7.5 12 3.75l7.5 3.75L12 11.25 4.5 7.5Z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.5 7.5v9l7.5 4.5 7.5-4.5v-9M8.25 9.375l7.5-3.75"
-                    />
-                  </svg>
-                </div>
-
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight text-slate-900">
-                    Inventory Details
-                  </h2>
-
-                  <p className="mt-0.5 text-sm text-slate-500">
-                    {selectedProduct.name}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeProductDetails}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="h-5 w-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 6l12 12M18 6 6 18"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="max-h-[calc(90vh-140px)] space-y-6 overflow-y-auto p-5 sm:p-6">
-              {/* Product Information */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Product
-                  </p>
-
-                  <p className="mt-1.5 font-semibold text-slate-800">
-                    {selectedProduct.name}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    SKU
-                  </p>
-
-                  <p className="mt-1.5 font-semibold text-slate-800">
-                    {selectedProduct.sku || "—"}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Current Stock
-                  </p>
-
-                  <p className="mt-1.5 font-semibold text-slate-800">
-                    {formatQuantity(selectedProduct.stock)}{" "}
-                    {selectedProduct.unit}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Status
-                  </p>
-
-                  <span
-                    className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                      getStockStatus(selectedProduct).className
-                    }`}
-                  >
-                    {getStockStatus(selectedProduct).label}
-                  </span>
-                </div>
-              </div>
-
-              {/* Transaction History */}
-              <div>
-                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-800">
-                      Transaction History
-                    </h3>
-
-                    <p className="mt-0.5 text-xs text-slate-400">
-                      Inventory movements for this product.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      loadTransactions(
-                        selectedProduct.product_id,
-                        transactionPage,
-                      )
-                    }
-                    disabled={transactionsLoading}
-                    className="inline-flex h-9 items-center justify-center gap-1.5 self-start rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      className="h-4 w-4"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M20.25 12a8.25 8.25 0 1 1-2.418-5.832"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M20.25 4.5v5.25H15"
-                      />
-                    </svg>
-                    {transactionsLoading ? "Refreshing..." : "Refresh"}
-                  </button>
-                </div>
-
-                {transactionsError && (
-                  <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      className="mt-0.5 h-5 w-5 shrink-0"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 3.75 21 19.5H3L12 3.75Z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 9v4.5M12 16.5h.007"
-                      />
-                    </svg>
-
-                    <span>{transactionsError}</span>
-                  </div>
-                )}
-
-                <div className="overflow-hidden rounded-xl border border-slate-200">
-                  {transactionsLoading ? (
-                    <div className="flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
-                      <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
-                      <p className="text-sm font-medium text-slate-600">
-                        Loading transactions...
-                      </p>
-                    </div>
-                  ) : transactions.length === 0 ? (
-                    <div className="flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
-                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          className="h-6 w-6"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5.25 5.25h13.5A1.25 1.25 0 0 1 20 6.5v11A1.25 1.25 0 0 1 18.75 18.75H5.25A1.25 1.25 0 0 1 4 17.5v-11a1.25 1.25 0 0 1 1.25-1.25Z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M8 9h8M8 12h8M8 15h5"
-                          />
-                        </svg>
-                      </div>
-
-                      <p className="text-sm font-semibold text-slate-700">
-                        No inventory transactions found
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-[900px] text-sm">
-                        <thead className="bg-slate-50/80">
-                          <tr className="border-b border-slate-200">
-                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Date
-                            </th>
-
-                            <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Type
-                            </th>
-
-                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Qty
-                            </th>
-
-                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Unit Cost
-                            </th>
-
-                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Reference
-                            </th>
-
-                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Notes
-                            </th>
-                          </tr>
-                        </thead>
-
-                        <tbody className="divide-y divide-slate-100">
-                          {transactions.map((transaction) => (
-                            <tr
-                              key={transaction.id}
-                              className="transition hover:bg-slate-50/70"
-                            >
-                              <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
-                                {formatDate(transaction.created_at)}
-                              </td>
-
-                              <td className="px-4 py-3.5 text-center">
-                                <span
-                                  className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getTransactionClass(
-                                    transaction.type,
-                                  )}`}
-                                >
-                                  {getTransactionLabel(transaction.type)}
-                                </span>
-                              </td>
-
-                              <td
-                                className={`px-4 py-3.5 text-right font-semibold ${getTransactionQuantityClass(
-                                  transaction.type,
-                                )}`}
-                              >
-                                {["purchase", "refund"].includes(
-                                  transaction.type,
-                                )
-                                  ? "+"
-                                  : ["sale", "bad_order"].includes(
-                                        transaction.type,
-                                      )
-                                    ? "-"
-                                    : ""}
-                                {formatQuantity(
-                                  Math.abs(Number(transaction.quantity)),
-                                )}
-                              </td>
-
-                              <td className="px-4 py-3.5 text-right text-slate-600">
-                                {transaction.unit_cost == null
-                                  ? "—"
-                                  : formatCurrency(transaction.unit_cost)}
-                              </td>
-
-                              <td className="px-4 py-3.5 text-slate-600">
-                                {formatReference(transaction)}
-                              </td>
-
-                              <td className="max-w-[300px] px-4 py-3.5 text-slate-600">
-                                <span className="block truncate">
-                                  {transaction.notes || "—"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                {/* Transaction Pagination */}
-                {!transactionsLoading && transactionLastPage > 1 && (
-                  <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm text-slate-500">
-                      {transactionTotal} transaction
-                      {transactionTotal !== 1 ? "s" : ""}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={transactionPage <= 1}
-                        onClick={() => {
-                          const nextPage = transactionPage - 1;
-
-                          setTransactionPage(nextPage);
-
-                          loadTransactions(
-                            selectedProduct.product_id,
-                            nextPage,
-                          );
-                        }}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          className="h-4 w-4"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="m14.5 18-6-6 6-6"
-                          />
-                        </svg>
-                        Previous
-                      </button>
-
-                      <span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600">
-                        Page {transactionPage} of {transactionLastPage}
-                      </span>
-
-                      <button
-                        type="button"
-                        disabled={transactionPage >= transactionLastPage}
-                        onClick={() => {
-                          const nextPage = transactionPage + 1;
-
-                          setTransactionPage(nextPage);
-
-                          loadTransactions(
-                            selectedProduct.product_id,
-                            nextPage,
-                          );
-                        }}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Next
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          className="h-4 w-4"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="m9.5 6 6 6-6 6"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end border-t border-slate-200 bg-slate-50/70 px-5 py-4 sm:px-6">
-              <button
-                type="button"
-                onClick={closeProductDetails}
-                disabled={transactionsLoading}
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ProductDetailsModal
+        selectedProduct={selectedProduct}
+        transactions={transactions}
+        transactionsLoading={transactionsLoading}
+        transactionsError={transactionsError}
+        transactionPage={transactionPage}
+        transactionLastPage={transactionLastPage}
+        transactionTotal={transactionTotal}
+        closeProductDetails={closeProductDetails}
+        loadTransactions={loadTransactions}
+        setTransactionPage={setTransactionPage}
+        formatQuantity={formatQuantity}
+        formatCurrency={formatCurrency}
+        formatDate={formatDate}
+        formatReference={formatReference}
+        getStockStatus={getStockStatus}
+        getTransactionClass={getTransactionClass}
+        getTransactionLabel={getTransactionLabel}
+      />
 
       {/* Adjust Inventory Modal */}
-      {adjustmentModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="h-5 w-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 5v14M5 12h14"
-                    />
-                  </svg>
-                </div>
+      <AdjustmentModal
+        open={adjustmentModalOpen}
+        adjustmentProduct={adjustmentProduct}
+        adjustmentType={adjustmentType}
+        adjustmentDirection={adjustmentDirection}
+        adjustmentQuantity={adjustmentQuantity}
+        adjustmentUnitCost={adjustmentUnitCost}
+        adjustmentNotes={adjustmentNotes}
+        adjustmentLoading={adjustmentLoading}
+        adjustmentError={adjustmentError}
+        setAdjustmentType={setAdjustmentType}
+        setAdjustmentDirection={setAdjustmentDirection}
+        setAdjustmentQuantity={setAdjustmentQuantity}
+        setAdjustmentUnitCost={setAdjustmentUnitCost}
+        setAdjustmentNotes={setAdjustmentNotes}
+        closeAdjustmentModal={closeAdjustmentModal}
+        handleAdjustmentSubmit={handleAdjustmentSubmit}
+        formatQuantity={formatQuantity}
+      />
 
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight text-slate-900">
-                    Adjust Inventory
-                  </h2>
-
-                  <p className="mt-0.5 text-sm text-slate-500">
-                    Record a bad order or manual stock adjustment.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeAdjustmentModal}
-                disabled={adjustmentLoading}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="h-5 w-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 6l12 12M18 6 6 18"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="max-h-[calc(90vh-140px)] space-y-5 overflow-y-auto p-5 sm:p-6">
-              {adjustmentError && (
-                <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="mt-0.5 h-5 w-5 shrink-0"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 3.75 21 19.5H3L12 3.75Z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 9v4.5M12 16.5h.007"
-                    />
-                  </svg>
-
-                  <span>{adjustmentError}</span>
-                </div>
-              )}
-
-              {/* Product */}
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Product
-                </label>
-
-                {adjustmentProduct ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          className="h-5 w-5"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M6.75 4.5h10.5A2.25 2.25 0 0 1 19.5 6.75v10.5A2.25 2.25 0 0 1 17.25 19.5H6.75A2.25 2.25 0 0 1 4.5 17.25V6.75A2.25 2.25 0 0 1 6.75 4.5Z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M8 9h8M8 12h8M8 15h4"
-                          />
-                        </svg>
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-slate-800">
-                          {adjustmentProduct.name}
-                        </div>
-
-                        <div className="mt-2 grid grid-cols-1 gap-1 text-xs text-slate-500 sm:grid-cols-2">
-                          <span>
-                            SKU:{" "}
-                            <span className="font-medium text-slate-700">
-                              {adjustmentProduct.sku || "—"}
-                            </span>
-                          </span>
-
-                          <span>
-                            Barcode:{" "}
-                            <span className="font-medium text-slate-700">
-                              {adjustmentProduct.barcode || "—"}
-                            </span>
-                          </span>
-
-                          <span>
-                            Current Stock:{" "}
-                            <span className="font-semibold text-slate-700">
-                              {formatQuantity(adjustmentProduct.stock)}{" "}
-                              {adjustmentProduct.unit}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="shrink-0 rounded-lg bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                        Locked
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                    No product selected.
-                  </div>
-                )}
-              </div>
-
-              {/* Type */}
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Type
-                </label>
-
-                <select
-                  value={adjustmentType}
-                  onChange={(e) =>
-                    setAdjustmentType(
-                      e.target.value as "adjustment" | "bad_order",
-                    )
-                  }
-                  disabled={adjustmentLoading}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100"
-                >
-                  <option value="bad_order">Bad Order</option>
-                  <option value="adjustment">Adjustment</option>
-                </select>
-
-                <p className="mt-1.5 text-xs text-slate-400">
-                  {adjustmentType === "bad_order"
-                    ? "Bad Order will deduct the quantity from current stock."
-                    : "Adjustment can increase or decrease stock."}
-                </p>
-              </div>
-
-              {/* Direction */}
-              {adjustmentType === "adjustment" && (
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                    Direction
-                  </label>
-
-                  <select
-                    value={adjustmentDirection}
-                    onChange={(e) =>
-                      setAdjustmentDirection(
-                        e.target.value as "increase" | "decrease",
-                      )
-                    }
-                    disabled={adjustmentLoading}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100"
-                  >
-                    <option value="increase">Increase</option>
-                    <option value="decrease">Decrease</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Quantity */}
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Quantity
-                </label>
-
-                <input
-                  type="number"
-                  min="0.001"
-                  step="0.001"
-                  value={adjustmentQuantity}
-                  onChange={(e) => setAdjustmentQuantity(e.target.value)}
-                  disabled={adjustmentLoading}
-                  placeholder="Enter quantity"
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100"
-                />
-
-                {adjustmentProduct && (
-                  <p className="mt-1.5 text-xs text-slate-400">
-                    Current Stock: {formatQuantity(adjustmentProduct.stock)}{" "}
-                    {adjustmentProduct.unit}
-                  </p>
-                )}
-              </div>
-
-              {adjustmentType === "adjustment" &&
-                adjustmentDirection === "increase" && (
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                      Unit Cost
-                    </label>
-
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={adjustmentUnitCost}
-                      onChange={(e) => setAdjustmentUnitCost(e.target.value)}
-                      disabled={adjustmentLoading}
-                      placeholder="Enter unit cost"
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100"
-                    />
-
-                    <p className="mt-1.5 text-xs text-slate-400">
-                      Required when increasing stock. This cost will be used for
-                      FIFO and COGS.
-                    </p>
-                  </div>
-                )}
-
-              {/* Notes */}
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="block text-sm font-semibold text-slate-700">
-                    Reason / Notes
-                  </label>
-
-                  <span className="text-xs text-slate-400">
-                    {adjustmentNotes.length}/1000
-                  </span>
-                </div>
-
-                <textarea
-                  value={adjustmentNotes}
-                  onChange={(e) => setAdjustmentNotes(e.target.value)}
-                  disabled={adjustmentLoading}
-                  rows={4}
-                  maxLength={1000}
-                  placeholder="Enter reason or notes..."
-                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100"
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50/70 px-5 py-4 sm:px-6">
-              <button
-                type="button"
-                onClick={closeAdjustmentModal}
-                disabled={adjustmentLoading}
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={handleAdjustmentSubmit}
-                disabled={adjustmentLoading}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {adjustmentLoading && (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                )}
-
-                {adjustmentLoading ? "Saving..." : "Save Adjustment"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SuccessMessage
+        message={successMessage}
+        onClose={() => setSuccessMessage("")}
+        title="Inventory Saved"
+      />
     </div>
   );
 }
